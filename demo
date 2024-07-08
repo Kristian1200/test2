@@ -1,0 +1,1667 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<dataTemplate name="DATA" description="ConfirmationLetter"  defaultPackage="confirmation_odt" Version="1.0">
+  <parameters>
+   <parameter name="FRM_SID" dataType="character" />
+  </parameters>
+
+  <dataQuery>
+
+    <sqlStatement name="Q_REPORT">
+    <![CDATA[
+     select pms_p.resort,pms_p.date_format date_format,
+            pms_p.time_format time_format,
+            pms_p.get_parameter('AMOUNT_FORMAT') amount_format,
+            pms_p.business_date business_date,
+            rep_gen.iso_format(pms_p.business_date) business_date_iso,
+            rep_gen.get_logo_name logo_image,
+            pms_p.currency p_currency,
+            (SELECT name FROM resort WHERE resort  = pms_p.resort) resort_name,
+            to_char(tz.get_property_date,pms_p.time_format) p_time,
+            to_char(tz.get_property_date,pms_p.date_format) p_date,
+            rep_gen.iso_format(tz.get_property_date) p_date_iso,
+			(SELECT count(r.resv_name_id) 
+			   FROM osa_reservation_bookings o, reservation_name r
+			  WHERE (r.resv_name_id = :p_resv_name_id or ( r.parent_resv_name_id = :p_resv_name_id and r.name_usage_type = 'AG'))
+			    AND o.resv_name_id = r.resv_name_id
+			    AND o.resort = :p_init_resort
+			    AND :p_activity_license_yn = 'Y') CS_ACTIVITY_COUNT,
+			( SELECT count(ri.resv_name_id)
+				FROM reservation_items ri,
+					 gem$item gi
+			   WHERE ri.resort = :p_init_resort
+				 AND ri.resv_name_id=:p_resv_name_id
+				 AND gi.resort = ri.resort
+				 AND gi.item_id = ri.item_id
+				 AND gi.showbeo_yn = 'Y'
+				 AND :p_item_inventory_yn = 'Y') CS_ITEM_COUNT,
+			(SELECT count(upsell_offer_id)
+               FROM confirmation_upsells_view cuv
+              WHERE :P_RESERVATION_UPSELL = 'Y'
+                AND cuv.resv_name_id = :p_resv_name_id
+                AND cuv.in_conf_resort = :p_init_resort) CS_UPSELL,
+			f_message('SAMPLE_GUEST_CONFIRMATION_TEXT1_'||pms_p.resort)Confirmation_bottom_text1,
+			f_message('SAMPLE_GUEST_CONFIRMATION_TEXT2_'||pms_p.resort)Confirmation_bottom_text2,
+			f_label('B_MAIL_LIST','REP_LBL',NULL,pms_p.user_language,'privacy_options') lbl_mail_list,
+			f_label('B_MARKET_RESEARCH_YN','REP_LBL',NULL,pms_p.user_language,'privacy_options') lbl_market_research_yn,
+			f_label('B_MARKET_RESEARCH_H_YN','REP_LBL',NULL,pms_p.user_language,'privacy_options') lbl_market_research_h_yn,
+			f_label('B_THIRD_PARTY_YN','REP_LBL',NULL,pms_p.user_language,'privacy_options') lbl_third_party_yn,
+			f_label('B_AUTOENROLL_MEMBER_YN','REP_LBL',NULL,pms_p.user_language,'privacy_options') lbl_autoenroll_member_yn,
+			f_label('B_EMAIL_YN','REP_LBL',NULL,pms_p.user_language,'privacy_options') lbl_email_yn,
+			f_label('B_PHONE_YN','REP_LBL',NULL,pms_p.user_language,'privacy_options') lbl_phone_yn,
+			f_label('B_SMS_YN','REP_LBL',NULL,pms_p.user_language,'privacy_options') lbl_sms_yn,
+			f_label('B_GUEST_PRIV_YN','REP_LBL',NULL,pms_p.user_language,'privacy_options') lbl_guest_priv_yn,
+            NVL(pms_p.has_permission_yn('GUEST_PRIVACY_FIELDS'),'N') guest_priv_permis,
+			NVl(pms_p.get_parameter('PRIVACY'),'N') priv_permis			
+     from dual
+    ]]>
+    </sqlStatement>
+
+    <sqlStatement name="Q_PARAMETERS">
+    <![CDATA[
+      select p.name param_name,p.value param_value
+      from TABLE(rep_gen.params) p
+      where rep_gen.show_parameter(p.name) = 'Y'
+      order by 1
+    ]]>
+    </sqlStatement>
+
+    <sqlStatement name="Q1">
+    <![CDATA[
+    SELECT ADDRESSEE_ADDRESS1,
+       ADDRESSEE_ADDRESS2,
+       ADDRESSEE_CITY,
+       ADDRESSEE_STATE,
+       ADDRESSEE_ZIP_CODE,
+       ADDRESSEE_COUNTRY,
+	   ADDRESSEE_TITLE,
+       TITLE,
+       DEPARTURE_DATE,
+       rep_gen.iso_format_from_char(DEPARTURE_DATE, CO_TIME) DEPARTURE_DATE_ISO,
+       ARRIVAL_COMMENTS,
+       FULL_ADDRESS,
+       ADDRESSEE_FIRST_NAME,
+       ADDRESSEE_LAST_NAME,
+	   ADDRESSEE_NAME_ID,
+	   confirmation_ref.guest_email_address(ADDRESSEE_NAME_ID)  ADDRESSEE_EMAIL,
+       RESERVATION_MADE_DATE,
+       rep_gen.iso_format_from_char(RESERVATION_MADE_DATE) RESERVATION_MADE_DATE_ISO,
+       ARRIVAL_DATE,
+       rep_gen.iso_format_from_char(ARRIVAL_DATE, ARRIVAL_TIME) ARRIVAL_DATE_ISO,
+       HISTORY_TOTAL_ARRIVALS,
+       ARRIVAL_TRANSPORT_TYPE,
+       NO_ROOMS,
+       RESERVATION_TYPE,
+       RATE_CODE_DESCRIPTION,
+       OCCUPATION,
+       CONTACT_NAME,
+       RESORT_CURRENCY_CODE,
+       CURRENCY_CODE,
+       RESORT_CURRENCY_SYMBOL,
+--       CUSTOM_MESSAGE,
+       CONFIRMATION_NO,
+       RESERVATION_STATUS,
+       CREDIT_CARD_TYPE,
+       TODAY_DATE_USA,
+       DEPARTURE_COMMENTS,
+       DEPARTURE_TIME,
+       DEPARTURE_TRANSPORT_TYPE,
+       SPOUSE_NAME,
+       RESERVATION_CLERK,
+       NO_OF_ADULTS,
+--       FIRST_VISIT_DATE,
+       rep_gen.iso_format(TO_DATE(FIRST_VISIT_DATE)) FIRST_VISIT_DATE_ISO,
+       GUEST_COMPANY,
+       LANGUAGE_DESCRIPTION,
+       RESERVATION_TYPE_DESCRIPTION,
+       DATE_OF_BIRTH,
+       FAX_NO,
+       LANGUAGE_CODE,
+       PHONE_NO,
+       to_char(ROOM_REVENUE, pms_p.get_parameter('AMOUNT_FORMAT')) ROOM_REVENUE,
+       GUEST_NAME_ID,
+       RESORT_NAME,
+       RESORT_STREET,
+       RESORT_CITY,
+       RESORT_ZIP_CODE,
+       RESORT_STATE,
+       RESORT_COUNTRY,
+       RESORT_PHONE_NO,
+       RESORT_FAX_NO,
+       TODAY_DATE_EUROPEAN,
+       NO_OF_CRIBS,
+       NO_OF_CHILDREN,
+       ROOM_TYPE_DESCRIPTION,
+       COUNTRY,
+       LAST_TIME_CONTACTED,
+       rep_gen.iso_format(LAST_TIME_CONTACTED) LAST_TIME_CONTACTED_ISO,
+--       LAST_VISIT_DATE,
+       rep_gen.iso_format(LAST_VISIT_DATE) LAST_VISIT_DATE_ISO,
+       LAST_ROOM_RATE,
+       MEMBERSHIP_DESCRIPTION,
+       MEMBERSHIP_INFO,
+       MEMBERSHIP_NO,
+       FIRST_NAME,
+       LAST_NAME,
+       MIDDLE_NAME,
+       HISTORY_TOTAL_NIGHTS,
+       NO_OF_NIGHTS,
+       NO_SHOWS,
+       CITY,
+       LONG_TITLE,
+       PAID_BY,
+       RATE_CODE,
+       RESORT_FULL_ADDRESS,
+       RESERVATION_PACKAGES,
+       ZIP_CODE,
+       PAYMENT_METHOD,
+       ROOM_RATE,
+       PASSPORT_NUMBER,
+       RESORT_FULL_NAME,
+       ROOM_NUMBER,
+--       NEXT_VISIT_DATE,
+       rep_gen.iso_format(NEXT_VISIT_DATE) NEXT_VISIT_DATE_ISO,
+       RESERVATION_COMMENTS,
+       ADDRESS1,
+       ADDRESS2,
+       SPECIAL_REQUEST_CODES,
+       SHARE_LIST,
+       SOURCE_NAME,
+       SPECIAL_REQUESTS_DESCRIPTION,
+       SPECIAL_REQUESTS_STRING,
+       HISTORY_TOTAL_CANCELLATIONS,
+       to_char(FIXED_CHARGE_FOR_STAY, pms_p.get_parameter('AMOUNT_FORMAT')) FIXED_CHARGE_FOR_STAY,
+       JOB_TITLE,
+       TRAVEL_AGENT_NAME,
+       to_char(TOTAL_COST_OF_STAY, pms_p.get_parameter('AMOUNT_FORMAT')) TOTAL_COST_OF_STAY,
+       TOTAL_DEPOSIT_PAID,
+       PREFERRED_ROOM_TYPE,
+       NO_OF_EXTRABEDS,
+       ARRIVAL_TIME,
+       EXTERNAL_REFERENCE,
+       GROUP_NAME,
+       ORIGIN_OF_BOOKING,
+       ORIGIN_OF_BOOKING_DESCRIPTION,
+       MARKET_CODE_DESCRIPTION,
+       ROOM_TYPE,
+       EXCHANGE_RATE,
+       LAST_ROOM_NUMBER,
+       VIP,
+       to_char(FIXED_CHARGE_AMOUNT, pms_p.get_parameter('AMOUNT_FORMAT')) FIXED_CHARGE_AMOUNT,
+       INCLUSIVE_PACKAGES,
+       RATE_PACKAGES,
+       ADDITIONAL_PACKAGES,
+       RESV_NAME_ID,
+       RESV_TYPE_MODE,
+       PAYMENT_METHOD_DESCRIPTION,
+       BLOCK_CODE,
+       DEPOSIT_AMOUNT_PAID,
+       DEPOSIT_PAID_DATE,
+       FIXED_CHARGE_DESCRIPTION,
+       DEPOSIT_DUE_AMOUNT,
+       DEPOSIT_DUE_DATE,
+       COUNTRY_DESCRIPTION,
+       NATIONALITY,
+       NATIONALITY_DESCRIPTION,
+       CO_TIME,
+       CREDIT_CARD_NUMBER,
+       CREDIT_CARD_EXP_DATE,
+       PRINT_USER,
+	   (select name from application_user where app_user= PRINT_USER) RESERVATION_USER_NAME,
+       MARKET_CODE,
+       ROOM_CLASS,
+       ROOM_CLASS_DESCRIPTION,
+       ARRIVAL_CARRIER_CODE,
+       DEPARTURE_CARRIER_CODE,
+       PICKUP_ARRIVAL_DATE,
+       PICKUP_ARRIVAL_TIME,
+       rep_gen.iso_format_from_char(PICKUP_ARRIVAL_DATE, PICKUP_ARRIVAL_TIME) PICKUP_ARRIVAL_ISO,
+       DROPOFF_DEPARTURE_DATE,
+       DROPOFF_DEPARTURE_TIME,
+       rep_gen.iso_format_from_char(DROPOFF_DEPARTURE_DATE, DROPOFF_DEPARTURE_TIME) DROPOFF_DEPARTURE_ISO,
+       ARRIVAL_TRANSPORT_CODE,
+       DEPARTURE_TRANSPORT_CODE,
+       MEMBERSHIP_TYPES,
+       MEMBERSHIP_NUMBERS,
+       MEMBERSHIPS,
+       ARRIVAL_TRANSPORT_REQUIRED,
+       DEPARTURE_TRANSPORT_REQUIRED,
+       ARRIVAL_STATION_CODE,
+       DEPARTURE_STATION_CODE,
+       NAME_TAX_TYPE_DESCRIPTION,
+       TAX_EXEMPT_NO,
+       CRS_ROOM_TYPE_DESCRIPTION,
+       EMAIL_ADDRESS,
+       to_char(ALT_TOTAL_COST_OF_STAY, pms_p.get_parameter('AMOUNT_FORMAT')) ALT_TOTAL_COST_OF_STAY,
+       to_char(ALT_ROOM_REVENUE, pms_p.get_parameter('AMOUNT_FORMAT')) ALT_ROOM_REVENUE,
+       ALT_MULTIPLE_RATE_INFO,
+       ALT_LAST_ROOM_RATE,
+       ALT_ROOM_RATE,
+       ALT_CURRENCY_CODE,
+       ALT_RATE_PACKAGES,
+       ALT_ADDITIONAL_PACKAGES,
+       ALT_TOTAL_DEPOSIT_PAID,
+       to_char(ALT_FIXED_CHARGE_FOR_STAY, pms_p.get_parameter('AMOUNT_FORMAT')) ALT_FIXED_CHARGE_FOR_STAY,
+       RESERVATION_CONTACT,
+       UDFC01,
+       UDFC02,
+       UDFC03,
+       UDFC04,
+       UDFC05,
+       UDFC06,
+       UDFC07,
+       UDFC08,
+       UDFC09,
+       UDFC10,
+       UDFC11,
+       UDFC12,
+       UDFC13,
+       UDFC14,
+       UDFC15,
+       UDFC16,
+       UDFC17,
+       UDFC18,
+       UDFC19,
+       UDFC20,
+       UDFC21,
+       UDFC22,
+       UDFC23,
+       UDFC24,
+       UDFC25,
+       UDFC26,
+       UDFC27,
+       UDFC28,
+       UDFC29,
+       UDFC30,
+       UDFC31,
+       UDFC32,
+       UDFC33,
+       UDFC34,
+       UDFC35,
+       UDFC36,
+       UDFC37,
+       UDFC38,
+       UDFC39,
+       UDFC40,
+       UDFN01,
+       UDFN02,
+       UDFN03,
+       UDFN04,
+       UDFN05,
+       UDFN06,
+       UDFN07,
+       UDFN08,
+       UDFN09,
+       UDFN10,
+       UDFN11,
+       UDFN12,
+       UDFN13,
+       UDFN14,
+       UDFN15,
+       UDFN16,
+       UDFN17,
+       UDFN18,
+       UDFN19,
+       UDFN20,
+       UDFN21,
+       UDFN22,
+       UDFN23,
+       UDFN24,
+       UDFN25,
+       UDFN26,
+       UDFN27,
+       UDFN28,
+       UDFN29,
+       UDFN30,
+       UDFN31,
+       UDFN32,
+       UDFN33,
+       UDFN34,
+       UDFN35,
+       UDFN36,
+       UDFN37,
+       UDFN38,
+       UDFN39,
+       UDFN40,
+       UDFD01,
+       UDFD02,
+       UDFD03,
+       UDFD04,
+       UDFD05,
+       UDFD06,
+       UDFD07,
+       UDFD08,
+       UDFD09,
+       UDFD10,
+       UDFD11,
+       UDFD12,
+       UDFD13,
+       UDFD14,
+       UDFD15,
+       UDFD16,
+       UDFD17,
+       UDFD18,
+       UDFD19,
+       UDFD20,
+       rep_gen.iso_format(UDFD01) UDFD01_ISO,
+       rep_gen.iso_format(UDFD02) UDFD02_ISO,
+       rep_gen.iso_format(UDFD03) UDFD03_ISO,
+       rep_gen.iso_format(UDFD04) UDFD04_ISO,
+       rep_gen.iso_format(UDFD05) UDFD05_ISO,
+       rep_gen.iso_format(UDFD06) UDFD06_ISO,
+       rep_gen.iso_format(UDFD07) UDFD07_ISO,
+       rep_gen.iso_format(UDFD08) UDFD08_ISO,
+       rep_gen.iso_format(UDFD09) UDFD09_ISO,
+       rep_gen.iso_format(UDFD10) UDFD10_ISO,
+       rep_gen.iso_format(UDFD11) UDFD11_ISO,
+       rep_gen.iso_format(UDFD12) UDFD12_ISO,
+       rep_gen.iso_format(UDFD13) UDFD13_ISO,
+       rep_gen.iso_format(UDFD14) UDFD14_ISO,
+       rep_gen.iso_format(UDFD15) UDFD15_ISO,
+       rep_gen.iso_format(UDFD16) UDFD16_ISO,
+       rep_gen.iso_format(UDFD17) UDFD17_ISO,
+       rep_gen.iso_format(UDFD18) UDFD18_ISO,
+       rep_gen.iso_format(UDFD19) UDFD19_ISO,
+       rep_gen.iso_format(UDFD20) UDFD20_ISO,
+       NAME_UDFC01,
+       NAME_UDFC02,
+       NAME_UDFC03,
+       NAME_UDFC04,
+       NAME_UDFC05,
+       NAME_UDFC06,
+       NAME_UDFC07,
+       NAME_UDFC08,
+       NAME_UDFC09,
+       NAME_UDFC10,
+       NAME_UDFC11,
+       NAME_UDFC12,
+       NAME_UDFC13,
+       NAME_UDFC14,
+       NAME_UDFC15,
+       NAME_UDFC16,
+       NAME_UDFC17,
+       NAME_UDFC18,
+       NAME_UDFC19,
+       NAME_UDFC20,
+       NAME_UDFC21,
+       NAME_UDFC22,
+       NAME_UDFC23,
+       NAME_UDFC24,
+       NAME_UDFC25,
+       NAME_UDFC26,
+       NAME_UDFC27,
+       NAME_UDFC28,
+       NAME_UDFC29,
+       NAME_UDFC30,
+       NAME_UDFC31,
+       NAME_UDFC32,
+       NAME_UDFC33,
+       NAME_UDFC34,
+       NAME_UDFC35,
+       NAME_UDFC36,
+       NAME_UDFC37,
+       NAME_UDFC38,
+       NAME_UDFC39,
+       NAME_UDFC40,
+       NAME_UDFN01,
+       NAME_UDFN02,
+       NAME_UDFN03,
+       NAME_UDFN04,
+       NAME_UDFN05,
+       NAME_UDFN06,
+       NAME_UDFN07,
+       NAME_UDFN08,
+       NAME_UDFN09,
+       NAME_UDFN10,
+       NAME_UDFN11,
+       NAME_UDFN12,
+       NAME_UDFN13,
+       NAME_UDFN14,
+       NAME_UDFN15,
+       NAME_UDFN16,
+       NAME_UDFN17,
+       NAME_UDFN18,
+       NAME_UDFN19,
+       NAME_UDFN20,
+       NAME_UDFN21,
+       NAME_UDFN22,
+       NAME_UDFN23,
+       NAME_UDFN24,
+       NAME_UDFN25,
+       NAME_UDFN26,
+       NAME_UDFN27,
+       NAME_UDFN28,
+       NAME_UDFN29,
+       NAME_UDFN30,
+       NAME_UDFN31,
+       NAME_UDFN32,
+       NAME_UDFN33,
+       NAME_UDFN34,
+       NAME_UDFN35,
+       NAME_UDFN36,
+       NAME_UDFN37,
+       NAME_UDFN38,
+       NAME_UDFN39,
+       NAME_UDFN40,
+       NAME_UDFD01,
+       NAME_UDFD02,
+       NAME_UDFD03,
+       NAME_UDFD04,
+       NAME_UDFD05,
+       NAME_UDFD06,
+       NAME_UDFD07,
+       NAME_UDFD08,
+       NAME_UDFD09,
+       NAME_UDFD10,
+       NAME_UDFD11,
+       NAME_UDFD12,
+       NAME_UDFD13,
+       NAME_UDFD14,
+       NAME_UDFD15,
+       NAME_UDFD16,
+       NAME_UDFD17,
+       NAME_UDFD18,
+       NAME_UDFD19,
+       NAME_UDFD20,
+       rep_gen.iso_format(NAME_UDFD01) NAME_UDFD01_ISO,
+       rep_gen.iso_format(NAME_UDFD02) NAME_UDFD02_ISO,
+       rep_gen.iso_format(NAME_UDFD03) NAME_UDFD03_ISO,
+       rep_gen.iso_format(NAME_UDFD04) NAME_UDFD04_ISO,
+       rep_gen.iso_format(NAME_UDFD05) NAME_UDFD05_ISO,
+       rep_gen.iso_format(NAME_UDFD06) NAME_UDFD06_ISO,
+       rep_gen.iso_format(NAME_UDFD07) NAME_UDFD07_ISO,
+       rep_gen.iso_format(NAME_UDFD08) NAME_UDFD08_ISO,
+       rep_gen.iso_format(NAME_UDFD09) NAME_UDFD09_ISO,
+       rep_gen.iso_format(NAME_UDFD10) NAME_UDFD10_ISO,
+       rep_gen.iso_format(NAME_UDFD11) NAME_UDFD11_ISO,
+       rep_gen.iso_format(NAME_UDFD12) NAME_UDFD12_ISO,
+       rep_gen.iso_format(NAME_UDFD13) NAME_UDFD13_ISO,
+       rep_gen.iso_format(NAME_UDFD14) NAME_UDFD14_ISO,
+       rep_gen.iso_format(NAME_UDFD15) NAME_UDFD15_ISO,
+       rep_gen.iso_format(NAME_UDFD16) NAME_UDFD16_ISO,
+       rep_gen.iso_format(NAME_UDFD17) NAME_UDFD17_ISO,
+       rep_gen.iso_format(NAME_UDFD18) NAME_UDFD18_ISO,
+       rep_gen.iso_format(NAME_UDFD19) NAME_UDFD19_ISO,
+       rep_gen.iso_format(NAME_UDFD20) NAME_UDFD20_ISO,
+       TAX1_NO,          -- SCR 33045
+       (SELECT tax1_no from name 
+	        where name_id = 
+                        (select TRAVEL_AGENT_ID
+                         from reservation_general_view 
+                         WHERE resv_name_id = :P_RESV_NAME_ID)) TAX1_NO_TRAVEL_AGENT,
+       (SELECT tax1_no from name 
+	        where name_id = 
+                        (select SOURCE_ID
+                         from reservation_general_view 
+                         WHERE resv_name_id = :P_RESV_NAME_ID)) TAX1_NO_SOURCE,
+       (SELECT tax1_no from name 
+	        where name_id = 
+                        (select COMPANY_ID
+                         from reservation_general_view 
+                         WHERE resv_name_id = :P_RESV_NAME_ID)) TAX1_NO_COMPANY, 		   
+       MUL_BIRTH_DATE,
+       MUL_BIRTH_PLACE,
+       REGISTRATION_CARD_NO,
+       GENDER,
+       BIRTH_PLACE,
+       BIRTH_DATE,
+       rep_gen.iso_format(BIRTH_DATE) BIRTH_DATE_ISO,
+       BIRTH_COUNTRY,
+       ID_DATE,
+       rep_gen.iso_format(ID_DATE) ID_DATE_ISO,
+	   ID_EXPIRATION_DATE,
+       rep_gen.iso_format(ID_EXPIRATION_DATE) ID_EXPIRATION_DATE_ISO,
+       ID_PLACE,
+       ID_NUMBER,
+       ID_TYPE,
+       PROFESSION,
+       PROPERTY_EMAIL,
+       XLAST_NAME,
+       XFIRST_NAME,
+       XTITLE,
+       XSALUTATION,
+       XCOMPANY_NAME,
+       XTRAVEL_AGENT_NAME,
+       XGROUP_NAME,
+       XSOURCE_NAME,
+       XRESERVATION_CONTACT,
+       XBILLING_CONTACT,
+       PRINT_RATE_YN,
+       CANCEL_DATE,
+       CANCEL_AMOUNT,
+       CANCEL_TIME,
+       rep_gen.iso_format_from_char(CANCEL_DATE, CANCEL_TIME, pms_p.date_format, 'fmhhAM') CANCEL_DATE_ISO,
+       CALLER_NAME,
+       CALLER_PHONE,
+       CALL_BEGIN_DATE,
+       rep_gen.iso_format_from_char(CALL_BEGIN_DATE, NULL, pms_p.date_format || ' ' || pms_p.time_format) CALL_BEGIN_DATE_ISO,
+       CALL_END_DATE,
+       rep_gen.iso_format_from_char(CALL_END_DATE, NULL, pms_p.date_format || ' ' || pms_p.time_format) CALL_END_DATE_ISO,
+       ID_COUNTRY,
+       ADDRESSEE_STATE_DESCRIPTION,
+       CALLER_FAX,
+       CALLER_EMAIL,
+       CHILDREN1,
+       CHILDREN2,
+       CHILDREN3,
+       SHARERS_ARRIVAL,
+       SHARERS_DEPARTURE,
+       SHARERS_SHARE_AMT,
+       SHARERS_FULL_NAME,
+       SHARERS_FULL_NAME2,
+       SHARE_ADULTS,
+       SHARE_CHILDREN,
+       SHARERS_XFULL_NAME,
+       DEPARTURE_DATE_LONG_FORMAT,
+       ARRIVAL_DATE_LONG_FORMAT,
+       CC_CURRENCY_CODE,
+       CC_EXCHANGE_RATE,
+       DECODE(ACTIVITY_TYPE,NULL,'N','Y') ACTIVITY_YN,
+       ADDRESSEE_ADDRESS3,
+       ADDRESSEE_ADDRESS4,
+       ADDRESS3,
+       ADDRESS4,
+       ADDRESSEE_CITY_EXT,
+       CITY_EXT,
+       CANCELLATION_NO,
+       MEMBERSHIP_DESCRIPTIONS,
+       TA_RECORD_LOCATOR,
+       to_char(GRAND_TOTAL, pms_p.get_parameter('AMOUNT_FORMAT')) GRAND_TOTAL,
+       FIXED_CHG_DET_QUANTITY,
+       FIXED_CHG_DET_AMOUNT,
+       FIXED_CHG_DET_TOTAL,
+       FIXED_CHG_DET_DESCRIPTION,
+       substr(confirmation_ref.multiple_rate_info,    1,4000) multiple_rate_info1,
+       substr(confirmation_ref.multiple_rate_info, 4001,4000) multiple_rate_info2,
+       substr(confirmation_ref.multiple_rate_info, 8001,4000) multiple_rate_info3,
+       substr(confirmation_ref.multiple_rate_info,12001,4000) multiple_rate_info4,
+       substr(confirmation_ref.multiple_rate_info,16001,4000) multiple_rate_info5,
+       substr(confirmation_ref.multiple_rate_info,20001,4000) multiple_rate_info6,
+       substr(confirmation_ref.multiple_rate_info,24001,4000) multiple_rate_info7,
+       substr(confirmation_ref.multiple_rate_info,28001,4000) multiple_rate_info8,
+       PACKAGE_GROUPS,
+       barcode,
+       ROOM_TYPE_DESCRIPTION_LONG,
+       ARRIVAL_DAY_OF_WEEK,
+       DEPARTURE_DAY_OF_WEEK,
+       RATE_CODE_INFO_SHORT,
+       RATE_CODE_INFO_LONG,
+       CUSTOM_REFERENCE,
+       ADDRESSEE_COUNTRY_DESCRIPTION,
+       ROOM_FEATURE_CODES,
+       ROOM_FEATURE_DESCRIPTIONS,
+       RESV_PREFERENCE_CODES,
+       RESV_PREFERENCE_DESCRIPTIONS,
+       RTC_ROOM_TYPE,
+       RTC_ROOM_TYPE_DESCRIPTION,
+       RTC_ROOM_TYPE_DESCRIPTION_LONG,
+       RESV_MEMBERSHIP_TYPES,
+       RESV_MEMBERSHIP_NUMBERS,
+       RESV_MEMBERSHIP_DESCRIPTIONS,
+       RESV_MEMBERSHIPS,
+       RESV_MEMBERSHIP_LEVEL,
+       ASB_CYCLE,
+       ASB_CYCLE_RATE,
+       ASB_PARTIAL_CYCLE_RATE,
+       PROFILE_FLOOR_CODES,
+       PROFILE_FLOOR_DESC,
+       PROFILE_SMOKING_CODES,
+       PROFILE_SMOKING_DESC,
+       PROFILE_SPECIAL_CODES,
+       PROFILE_SPECIAL_DESC,
+       PROFILE_OTHER_PREFERENCE_CODES,
+       PROFILE_OTHER_PREFERENCE_DESC,
+       ASB_TOTAL_LEASE,
+       DAILY_RATE_INFO,
+       ALT_DAILY_RATE_INFO,
+       TOTAL_TAX,
+       ALT_TOTAL_TAX,
+       to_char(SHARE_AMOUNT, pms_p.get_parameter('AMOUNT_FORMAT')) SHARE_AMOUNT,
+       to_char(ALT_SHARE_AMOUNT, pms_p.get_parameter('AMOUNT_FORMAT')) ALT_SHARE_AMOUNT,
+       MEMBERSHIP_FOLIO_MESSAGE,
+	   addl_addressee_name_id,
+       addl_addressee_name,
+       addl_addressee_full_address,
+       addl_addressee_address1,
+       addl_addressee_address2,
+       addl_addressee_city,
+       addl_addressee_state,
+       addl_addressee_country,
+       addl_addressee_country_desc,
+       addl_addressee_state_desc,
+       addl_addressee_zip_code,
+       cancellation_date,
+       rep_gen.iso_format_from_char(cancellation_Date) cancellation_date_iso,
+       cancellation_reason_code,
+       cancellation_reason_desc,
+       awrd_redeem_upgrd_points,
+       is_upsold_yn,
+       upsold_by_user_id,
+       upsell_rule_id,
+       upsell_rule_code,
+       org_room_category,
+       org_room_category_label,
+       org_stay_cost,
+       first_night_upsell,
+       total_upsell_charge,
+       total_stay_cost_after_upsell,
+       resort_check_in_time,
+       rep_gen.iso_format_from_char(arrival_date, resort_check_in_time) resort_check_in_time_iso,
+       resort_check_out_time,
+       rep_gen.iso_format_from_char(departure_date, resort_check_out_time) resort_check_out_time_iso,
+       opera_ecertificate,
+       promotion_coupons,
+       loyalty_mem_no,
+       loyalty_mem_level_code,
+       loyalty_mem_level_desc,
+       loyalty_mem_balance,
+       loyalty_nights_to_renew,
+       loyalty_nights_next_level,
+	   confirmation_ref.multiple_rate_info multiple_rate_info,
+	   CASE WHEN RESERVATION_TYPE_DESCRIPTION IN ('4 PM HOLD','DEPOSIT REQUESTED','TENTATIVE GRP HOLD') THEN
+	             'not guaranteed'
+		    ELSE 'guaranteed'
+	   END GUARANTEE_STATUS,
+	   (select initcap(short_description) from resort_room_category where resort=pms_p.resort and label=CONFIRMATION_GENERAL_VIEW.ROOM_TYPE) CF_ROOMTYPE_DESC,
+	   ors_resort,
+	   guest_donotemail,
+	   guest_donotmail,
+	   guest_greeting_long,
+	   membership_level,
+	   accompanying_names,
+	   accompanying_yn,
+	   channel,
+	   children_age,
+	   transaction_code,
+	   trx_tax_incl_yn,
+	   contact_address_building,
+	   contact_address_city, 
+	   contact_address_country_code,
+	   contact_address_state_code ,
+	   contact_address_street,
+	   contact_address_zip,
+	   booker_crm_id, 
+	   contact_name_id,
+	   contact_title,
+	   contact_firstname,
+	   contact_middlename,
+	   contact_lastname,
+	   contact_gender,
+	   contact_email,
+	   contact_greeting ,
+	   contact_greeting_long,	   
+	   travel_agent_commission,
+	   routing_codes,
+       package_addl_codes,
+       packages_inclusive_codes,
+	   rtc_room_class
+  FROM CONFIRMATION_GENERAL_VIEW
+ WHERE RESV_NAME_ID = :P_RESV_NAME_ID
+   AND RESORT_NAME = :P_INIT_RESORT
+    ]]>
+    </sqlStatement>
+
+    <sqlStatement name="Q2">
+    <![CDATA[
+    SELECT r.resv_name_id act_resv_name_id,
+       TO_CHAR(start_date, pms_p.date_format) activity_date,
+       o.activity_type activity_type,
+       o.location_code activity_location_code,
+       o.location_desc activity_location_desc,
+       o.status_desc activity_status_desc,
+       o.activity_desc,
+       o.pax activity_pax,
+       o.start_time activity_start_time,
+       o.duration activity_duration,
+       o.end_time activity_end_time,
+       o.status_code activity_status_code,
+       o.notes activity_notes,
+       o.guest_type activity_guest_type,
+       o.activity_amount,
+       o.deposit_amount activity_deposit_amount,
+       (initcap(r.sguest_name)||' '||initcap(r.sguest_firstname)) activity_guestname
+   FROM osa_reservation_bookings o, reservation_name r
+   WHERE (r.resv_name_id = :p_resv_name_id or ( r.parent_resv_name_id = :p_resv_name_id and r.name_usage_type = 'AG'))
+   AND o.resv_name_id = r.resv_name_id
+   AND o.resort = :p_init_resort
+   AND :p_activity_license_yn = 'Y'
+   ORDER BY o.resv_name_id
+    ]]>
+    </sqlStatement>
+
+    <sqlStatement name="Q3">
+    <![CDATA[
+    SELECT ri.resv_name_id item_resv_name_id,
+       ri.quantity item_quantity,
+       TO_CHAR(ri.begin_date,pms_p.date_format) item_begin_date,
+       rep_gen.iso_format(ri.begin_date) item_begin_date_iso,
+       TO_CHAR(ri.end_date,pms_p.date_format) item_end_date,
+       rep_gen.iso_format(ri.end_date) item_end_date_iso,
+       DECODE(:p_guest_language_yn,'Y',NVL(sc_translation.item_trans('NAME',:language_code,gi.item_id,gi.resort),gi.name),gi.name) item_name,
+       DECODE(:p_guest_language_yn,'Y',NVL(sc_translation.item_trans('DESCRIPTION',:language_code,gi.item_id,gi.resort),gi.description),gi.description) item_description,
+       gi.article_number item_code
+    FROM reservation_items ri,
+         gem$item gi
+    WHERE ri.resort = :p_init_resort
+      AND ri.resv_name_id=:p_resv_name_id
+      AND gi.resort = ri.resort
+      AND gi.item_id = ri.item_id
+      AND gi.showbeo_yn = 'Y'
+      AND :p_item_inventory_yn = 'Y'
+    ORDER BY gi.article_number,ri.begin_date,ri.end_date
+    ]]>
+    </sqlStatement>
+
+    <sqlStatement name="Q4">
+    <![CDATA[
+     SELECT
+      resv_name_id in_conf_resv_name_id,
+      upsell_offer_id,
+      to_rate_code,
+      from_room_category,
+      to_room_category,
+      to_room_category_label,
+      from_room_class,
+      to_room_class,
+      first_night_rate_amt,
+      total_stay_amt,
+      first_night_upsell,
+      tot_upsell_money_amt,
+      total_ranking_value,
+      rate_source_type,
+      rate_source,
+      membership_type,
+      membership_level,
+      channel,
+      guarantee_type,
+      market_code,
+      upsell_rule_id,
+      upsell_code,
+      in_conf_resort,
+      first_night_upsell_charge,
+      total_upsell_charge,
+      room_category_description,
+      DECODE(:p_show_description_yn,'Y',resv_pref.get_feat_description(room_features),room_features) room_features,
+      v_first_night_amt_fmt,
+      v_total_stay_amt_fmt,
+      v_first_ngt_upsell_fmt,
+      v_tot_upsell_money_fmt,
+      v_first_night_chrg_fmt,
+      v_tot_upsell_chrg_fmt,
+      currency_code,
+      room_category_description_long
+      FROM confirmation_upsells_view cuv
+     WHERE :P_RESERVATION_UPSELL = 'Y'
+       AND cuv.resv_name_id = :p_resv_name_id
+       AND cuv.in_conf_resort = :p_init_resort
+    ]]>
+    </sqlStatement>
+	
+	<sqlStatement name="Q_DEPOSIT_RULE">
+    <![CDATA[
+        select resv_deposit_schedule_id
+		       ,rule_code as  deposit_rule_code 
+		       ,description as deposit_rule_desc
+         from reservation_deposit_schedule
+         where resort=:p_init_resort
+		  and  resv_name_id=:p_resv_name_id
+    ]]>
+    </sqlStatement>
+	
+	<sqlStatement name="Q_CANCEL_RULE">
+    <![CDATA[
+       select rcp.resv_cancel_policy_id
+		      ,rcp.rule_code  as cancel_rule_code
+			  ,rcp.description as cancel_rule_desc
+        from reservation_cancel_policy rcp,
+		     reservation_name rn
+       where rcp.resv_name_id = rn.resv_name_id 
+	     and rn.resv_name_id=:p_resv_name_id
+		 and rn.resort= rcp.resort
+		 and rn.resort= :p_init_resort
+    ]]>
+    </sqlStatement>
+    
+    <sqlStatement name="Q_LINKED_RESERVATIONS">
+    <![CDATA[
+        SELECT
+          char1 resort,
+          char2 title,    
+          char3 guest_name,    
+          bigchar1 room_category,    
+          char8 confirmation_no,    
+          to_char(number1, pms_p.get_parameter('AMOUNT_FORMAT')) nightly_rate,  
+          number2 adults,  
+          number3 children,  
+          date1 arrival, 
+          rep_gen.iso_format(date1) arrival_date_iso,   
+          date2 departure,
+          rep_gen.iso_format(date2) departure_date_iso,  
+          confirmation_odt.get_incl_packages(char1,
+                                             number4,char7)inclusive_packages,
+          char9 link_type,
+          char10 resv_status                
+        FROM REPORT_TABLE
+        WHERE report_id = confirmation_odt.get_report_id
+    ]]>
+    </sqlStatement>
+	
+    <sqlStatement name="Q_PRIVACY_OPTIONS">
+    <![CDATA[
+       SELECT 
+	       n.mail_list m_lst,
+           n.market_research_yn mr_yn,
+           n.third_party_yn tp_yn,
+           n.autoenroll_member_yn am_yn,
+           n.email_yn e_yn,
+           n.phone_yn p_yn,
+           n.sms_yn sms_yn,
+           n.guest_priv_yn gp_yn,
+           n.d_opt_in_mail_list_flg dm_lst,
+           n.d_opt_in_market_research_flg dmr_yn,
+           n.d_opt_in_third_party_flg dtp_yn,
+           n.d_opt_in_autoenroll_member_flg dam_yn,
+           n.d_opt_in_email_flg de_yn,
+           n.d_opt_in_phone_flg dp_yn,
+           n.d_opt_in_sms_flg dsms_yn,
+           n.d_opt_in_guest_priv_flg dgp_yn,
+           NAME_REF.get_phone_no(n.name_id,'EMAIL' ) email
+       FROM name n,
+		    reservation_name rn
+	   WHERE rn.resv_name_id = :p_resv_name_id
+		 AND rn.resort 		 = :p_init_resort
+		 AND n.name_id 	     = rn.name_id
+    ]]>
+    </sqlStatement>	
+  </dataQuery>
+  <dataTrigger name="beforeReportTrigger" source="confirmation_odt.beforeReport" />
+
+  <dataStructure>
+
+  <group name="REPORT" source="Q_REPORT">
+    <element name="RESORT" value="RESORT" />
+    <element name="BUSINESS_DATE" value="BUSINESS_DATE" />
+    <element name="BUSINESS_DATE_ISO" value="BUSINESS_DATE_ISO" />
+    <element name="DATE_FORMAT" value="DATE_FORMAT" />
+    <element name="TIME_FORMAT" value="TIME_FORMAT" />
+    <element name="CURRENCY_FORMAT" value="AMOUNT_FORMAT" />
+    <element name="LOGO_IMAGE" value="LOGO_IMAGE" />
+    <element name="RESORT_NAME" value="RESORT_NAME" />
+    <element name="SYSTEM_TIME" value="P_TIME" />
+    <element name="SYSTEM_DATE" value="P_DATE" />
+    <element name="SYSTEM_DATE_ISO" value="P_DATE_ISO" />
+	<element name="CS_ACTIVITY_COUNT" value="CS_ACTIVITY_COUNT" />
+	<element name="CS_ITEM_COUNT" value="CS_ITEM_COUNT" />
+	<element name="CS_UPSELL" value="CS_UPSELL" />
+	<element name="CONFIRMATION_BOTTOM_TEXT1" value="CONFIRMATION_BOTTOM_TEXT1" />
+	<element name="CONFIRMATION_BOTTOM_TEXT2" value="CONFIRMATION_BOTTOM_TEXT2" />
+	<element name="LBL_MAIL_LIST" value="LBL_MAIL_LIST" />
+	<element name="LBL_MARKET_RESEARCH_YN" value="LBL_MARKET_RESEARCH_YN" />
+	<element name="LBL_MARKET_RESEARCH_H_YN" value="LBL_MARKET_RESEARCH_H_YN" />
+	<element name="LBL_THIRD_PARTY_YN" value="LBL_THIRD_PARTY_YN" />
+	<element name="LBL_AUTOENROLL_MEMBER_YN" value="LBL_AUTOENROLL_MEMBER_YN" />
+	<element name="LBL_EMAIL_YN" value="LBL_EMAIL_YN" />
+	<element name="LBL_PHONE_YN" value="LBL_PHONE_YN" />
+	<element name="LBL_SMS_YN" value="LBL_SMS_YN" />
+	<element name="LBL_GUEST_PRIV_YN" value="LBL_GUEST_PRIV_YN" />
+	<element name="GUEST_PRIV_PERMIS" value="GUEST_PRIV_PERMIS" />
+	<element name="PRIV_PERMIS" value="PRIV_PERMIS" />		
+  </group>
+
+  <group name="G_CONFIRMATION" source="Q1">
+    <element name="ADDRESSEE_ADDRESS1" value="ADDRESSEE_ADDRESS1" />
+    <element name="ADDRESSEE_ADDRESS2" value="ADDRESSEE_ADDRESS2" />
+    <element name="ADDRESSEE_FULL_ADDRESS" value="FULL_ADDRESS" />
+    <element name="ADDRESSEE_FIRST_NAME" value="ADDRESSEE_FIRST_NAME" />
+    <element name="ADDRESSEE_LAST_NAME" value="ADDRESSEE_LAST_NAME" />
+	<element name="ADDRESSEE_EMAIL" value="ADDRESSEE_EMAIL" />
+	<element name="ADDRESSEE_PMS_ID" value="ADDRESSEE_NAME_ID" />  
+	<element name="ADDRESSEE_GREETING_LONG" value="LONG_TITLE" />
+	<element name="ADDRESSEE_GREETING" value="ADDRESSEE_TITLE" />
+	<element name="ADDRESSEE_STREET" value="ADDRESSEE_ADDRESS1" />
+	<element name="ADDRESSEE_BUILDING" value="ADDRESSEE_ADDRESS2" />
+	<element name="ADDRESSEE_CITY" value="ADDRESSEE_CITY" />
+    <element name="ADDRESSEE_CITY_DESCRIPTION" value="ADDRESSEE_CITY" />	
+    <element name="ADDRESSEE_COUNTRY_CODE" value="ADDRESSEE_COUNTRY" />	
+    <element name="ADDRESSEE_COUNTRY_DESCRIPTION" value="ADDRESSEE_COUNTRY_DESCRIPTION" />	
+    <element name="ADDRESSEE_STATE_CODE" value="ADDRESSEE_STATE" />	
+    <element name="ADDRESSEE_ZIP_CODE" value="ADDRESSEE_ZIP_CODE" />
+	<element name="GUEST_CRS_ID" value="GUEST_NAME_ID" />
+	<element name="GUEST_DONOTEMAIL" value="GUEST_DONOTEMAIL"/>
+	<element name="GUEST_DONOTMAIL" value="GUEST_DONOTMAIL"/>
+	<element name="GUEST_GREETING" value="TITLE" />
+	<element name="GUEST_GREETING_LONG" value="GUEST_GREETING_LONG"/>
+	<element name="MEMBERSHIP_TYPE" value="MEMBERSHIP_TYPES" />
+    <element name="MEMBER_NUMBER" value="MEMBERSHIP_NUMBERS" />
+    <element name="MEMBERSHIP_LEVEL" value="MEMBERSHIP_LEVEL" />
+	<element name="GUEST_PHONE_HOME" value="PHONE_NO" />
+	<element name="VIP_LEVEL_CODE" value="VIP" />
+	<element name="ACCOMPANYING_NAMES" value="ACCOMPANYING_NAMES"/>
+	<element name="ACCOMPANYING_YN" value="ACCOMPANYING_YN"/>
+	<element name="CHANNEL_CODE" value="CHANNEL"/>
+	<element name="CHILDREN_AGES" value="CHILDREN_AGE"/>
+	<element name="RATE_TRANSACTION_CODE" value="TRANSACTION_CODE"/>
+	<element name="RATE_TAXINCL_YN" value="TRX_TAX_INCL_YN"/>
+	<element name="ROOMTYPE_BOOKED_CODE" value="RTC_ROOM_TYPE" />
+	<element name="ROOMTYPE_BOOKED_CLASS" value="RTC_ROOM_CLASS" />
+    <element name="RESERVATION_MADE_DATE_SHORT" value="RESERVATION_MADE_DATE" />
+    <element name="RESERVATION_MADE_DATE_ISO" value="RESERVATION_MADE_DATE_ISO" />	
+    <element name="TITLE_CODE" value="TITLE" />
+    <element name="DEPARTURE_DATE_SHORT" value="DEPARTURE_DATE" />
+    <element name="DEPARTURE_DATE_ISO" value="DEPARTURE_DATE_ISO" />
+    <element name="ARRIVAL_COMMENTS" value="ARRIVAL_COMMENTS" />
+    <element name="ARRIVAL_DATE_SHORT" value="ARRIVAL_DATE" />
+    <element name="ARRIVAL_DATE_ISO" value="ARRIVAL_DATE_ISO" />
+    <element name="HISTORY_TOTAL_ARRIVALS" value="HISTORY_TOTAL_ARRIVALS" />
+    <element name="ARRIVAL_TRANSPORT_TYPE" value="ARRIVAL_TRANSPORT_TYPE" />
+    <element name="NO_ROOMS" value="NO_ROOMS" />
+    <element name="RESERVATION_TYPE_CODE" value="RESERVATION_TYPE" />
+    <element name="RATE_CODE_DESCRIPTION" value="RATE_CODE_DESCRIPTION" />
+    <element name="OCCUPATION" value="OCCUPATION" />
+    <element name="CONTACT_NAME" value="CONTACT_NAME" />
+	<element name="CONTACT_ADDRESS_BUILDING" value="CONTACT_ADDRESS_BUILDING" />
+	<element name="CONTACT_ADDRESS_CITY" value="CONTACT_ADDRESS_CITY" />
+	<element name="CONTACT_ADDRESS_COUNTRY_CODE" value="CONTACT_ADDRESS_COUNTRY_CODE" />
+	<element name="CONTACT_ADDRESS_STATE_CODE" value="CONTACT_ADDRESS_STATE_CODE" />
+	<element name="CONTACT_ADDRESS_STREET" value="CONTACT_ADDRESS_STREET" />
+	<element name="CONTACT_ADDRESS_ZIP" value="CONTACT_ADDRESS_ZIP" />
+	<element name="BOOKER_CRM_ID" value="BOOKER_CRM_ID" /> 
+	<element name="CONTACT_NAME_ID" value="CONTACT_NAME_ID" />
+	<element name="CONTACT_TITLE" value="CONTACT_TITLE" />
+	<element name="CONTACT_FIRSTNAME" value="CONTACT_FIRSTNAME" />
+	<element name="CONTACT_MIDDLENAME" value="CONTACT_MIDDLENAME" />
+	<element name="CONTACT_LASTNAME" value="CONTACT_LASTNAME" />
+	<element name="CONTACT_GENDER" value="CONTACT_GENDER" />
+	<element name="CONTACT_EMAIL" value="CONTACT_EMAIL" />
+	<element name="CONTACT_GREETING" value="CONTACT_GREETING" />
+	<element name="CONTACT_GREETING_LONG" value="CONTACT_GREETING_LONG" />
+    <element name="RESORT_CURRENCY_CODE" value="RESORT_CURRENCY_CODE" />
+    <element name="GUEST_REFERENCE_CURRENCY_CODE" value="CURRENCY_CODE" />
+    <element name="RESORT_CURRENCY_SYMBOL" value="RESORT_CURRENCY_SYMBOL" />
+    <!--element name="CUSTOM_MESSAGE" value="CUSTOM_MESSAGE" /-->
+    <element name="CONFIRMATION_NO" value="CONFIRMATION_NO" />
+    <element name="RESERVATION_STATUS" value="RESERVATION_STATUS" />
+    <element name="CREDIT_CARD_TYPE" value="CREDIT_CARD_TYPE" />
+    <element name="BUSINESS_DATE_LONG" value="TODAY_DATE_USA" />
+    <element name="DEPARTURE_COMMENTS" value="DEPARTURE_COMMENTS" />
+    <element name="DEPARTURE_TIME" value="DEPARTURE_TIME" />
+    <element name="DEPARTURE_TRANSPORT_TYPE" value="DEPARTURE_TRANSPORT_TYPE" />
+    <element name="SPOUSE_NAME" value="SPOUSE_NAME" />
+    <element name="RESERVATION_CLERK" value="RESERVATION_CLERK" />
+    <element name="NO_OF_ADULTS" value="NO_OF_ADULTS" />
+    <!--element name="FIRST_VISIT_DATE_LONG" value="FIRST_VISIT_DATE" /-->
+    <element name="FIRST_VISIT_DATE_ISO" value="FIRST_VISIT_DATE_ISO" />
+    <element name="GUEST_COMPANY" value="GUEST_COMPANY" />
+    <element name="LANGUAGE_DESCRIPTION" value="LANGUAGE_DESCRIPTION" />
+    <element name="RESERVATION_TYPE_DESCRIPTION" value="RESERVATION_TYPE_DESCRIPTION" />
+    <element name="DATE_OF_BIRTH_SHORT" value="DATE_OF_BIRTH" />
+    <element name="FAX_NO" value="FAX_NO" />
+    <element name="LANGUAGE_CODE" value="LANGUAGE_CODE" />
+    <element name="PHONE_NUMBER" value="PHONE_NO" />
+    <element name="ROOM_REVENUE" value="ROOM_REVENUE" />
+    <element name="GUEST_NAME_ID" value="GUEST_NAME_ID" />
+    <element name="RESORT_NAME_CODE" value="RESORT_NAME" />
+    <element name="RESORT_STREET" value="RESORT_STREET" />
+    <element name="RESORT_CITY" value="RESORT_CITY" />
+    <element name="RESORT_ZIP_CODE" value="RESORT_ZIP_CODE" />
+    <element name="RESORT_STATE_CODE" value="RESORT_STATE" />
+    <element name="RESORT_COUNTRY_CODE" value="RESORT_COUNTRY" />
+    <element name="RESORT_PHONE_NO" value="RESORT_PHONE_NO" />
+    <element name="RESORT_FAX_NO" value="RESORT_FAX_NO" />
+    <element name="SYSTEM_DATE_SHORT" value="TODAY_DATE_EUROPEAN" />
+    <element name="NO_OF_CRIBS" value="NO_OF_CRIBS" />
+    <element name="NO_OF_CHILDREN" value="NO_OF_CHILDREN" />
+    <element name="ROOM_TYPE_DESCRIPTION" value="ROOM_TYPE_DESCRIPTION" />
+    <element name="COUNTRY_CODE" value="COUNTRY" />
+    <element name="LAST_TIME_CONTACTED_LONG" value="LAST_TIME_CONTACTED" />
+    <element name="LAST_TIME_CONTACTED_ISO" value="LAST_TIME_CONTACTED_ISO" />
+    <!--element name="LAST_VISIT_DATE_LONG" value="LAST_VISIT_DATE" /-->
+    <element name="LAST_VISIT_DATE_ISO" value="LAST_VISIT_DATE_ISO" />
+    <element name="LAST_ROOM_RATE" value="LAST_ROOM_RATE" />
+    <element name="MEMBERSHIP_DESCRIPTION" value="MEMBERSHIP_DESCRIPTION" />
+    <element name="MEMBERSHIP_INFO" value="MEMBERSHIP_INFO" />
+    <element name="MEMBERSHIP_NUMBERS_RESV" value="MEMBERSHIP_NO" />
+    <element name="FIRST_NAME" value="FIRST_NAME" />
+    <element name="LAST_NAME" value="LAST_NAME" />
+    <element name="MIDDLE_NAME" value="MIDDLE_NAME" />
+    <element name="HISTORY_TOTAL_NIGHTS" value="HISTORY_TOTAL_NIGHTS" />
+    <element name="NO_OF_NIGHTS" value="NO_OF_NIGHTS" />
+    <element name="NO_SHOWS" value="NO_SHOWS" />
+    <element name="CITY" value="CITY" />
+    <element name="SALUTATION" value="LONG_TITLE" />
+    <element name="PAYMENT_DETAILS" value="PAID_BY" />
+    <element name="RATE_CODE" value="RATE_CODE" />
+    <element name="RESORT_FULL_ADDRESS" value="RESORT_FULL_ADDRESS" />
+    <element name="RESERVATION_PACKAGES" value="RESERVATION_PACKAGES" />
+    <element name="ZIP_CODE" value="ZIP_CODE" />
+    <element name="PAYMENT_METHOD_CODE" value="PAYMENT_METHOD" />
+    <element name="ROOM_RATE" value="ROOM_RATE" />
+    <element name="PASSPORT_NUMBER" value="PASSPORT_NUMBER" />
+    <element name="RESORT_FULL_NAME" value="RESORT_FULL_NAME" />
+    <element name="ROOM_NUMBER" value="ROOM_NUMBER" />
+    <!--element name="LAST_VISIT_DATE_LONG" value="LAST_VISIT_DATE" /-->
+    <!--element name="NEXT_VISIT_DATE_LONG" value="NEXT_VISIT_DATE" /-->
+    <element name="NEXT_VISIT_DATE_ISO" value="NEXT_VISIT_DATE_ISO" />
+    <element name="RESERVATION_COMMENTS" value="RESERVATION_COMMENTS" />
+    <element name="ADDRESS1" value="ADDRESS1" />
+    <element name="ADDRESS2" value="ADDRESS2" />
+    <element name="SPECIAL_REQUEST_CODES" value="SPECIAL_REQUEST_CODES" />
+    <element name="SHARE_LIST" value="SHARE_LIST" />
+    <element name="SOURCE_NAME" value="SOURCE_NAME" />
+    <element name="SPECIAL_REQUESTS_DESCRIPTION" value="SPECIAL_REQUESTS_DESCRIPTION" />
+    <element name="SPECIAL_REQUESTS_STRING" value="SPECIAL_REQUESTS_STRING" />
+    <element name="HISTORY_TOTAL_CANCELLATIONS" value="HISTORY_TOTAL_CANCELLATIONS" />
+    <element name="FIXED_CHARGE_FOR_STAY" value="FIXED_CHARGE_FOR_STAY" />
+    <element name="JOB_TITLE" value="JOB_TITLE" />
+    <element name="TRAVEL_AGENT_NAME" value="TRAVEL_AGENT_NAME" />
+	<element name="TRAVEL_AGENT_COMMISSION" value="TRAVEL_AGENT_COMMISSION"/>
+	<element name="ROUTING_CODES" value="ROUTING_CODES"/>
+	<element name="PACKAGES_ADDITIONAL_CODES" value="PACKAGE_ADDL_CODES"/>
+	<element name="PACKAGES_INCLUSIVE_CODES" value="PACKAGES_INCLUSIVE_CODES"/>
+    <element name="TOTAL_COST_OF_STAY" value="TOTAL_COST_OF_STAY" />
+    <element name="TOTAL_DEPOSIT_PAID" value="TOTAL_DEPOSIT_PAID" />
+    <element name="PREFERRED_ROOM_TYPE" value="PREFERRED_ROOM_TYPE" />
+    <element name="NO_OF_EXTRABEDS" value="NO_OF_EXTRABEDS" />
+    <element name="ARRIVAL_TIME" value="ARRIVAL_TIME" />
+    <element name="EXTERNAL_REFERENCE" value="EXTERNAL_REFERENCE" />
+    <element name="GROUP_NAME" value="GROUP_NAME" />
+    <element name="ORIGIN_OF_BOOKING_CODE" value="ORIGIN_OF_BOOKING" />
+    <element name="ORIGIN_OF_BOOKING_DESCRIPTION" value="ORIGIN_OF_BOOKING_DESCRIPTION" />
+    <element name="MARKET_CODE_DESCRIPTION" value="MARKET_CODE_DESCRIPTION" />
+    <element name="ROOM_TYPE_CODE" value="ROOM_TYPE" />
+    <element name="EXCHANGE_RATE" value="EXCHANGE_RATE" />
+    <element name="LAST_ROOM_NUMBER" value="LAST_ROOM_NUMBER" />
+    <element name="VIP_CODE" value="VIP" />
+    <element name="FIXED_CHARGE_AMOUNT" value="FIXED_CHARGE_AMOUNT" />
+    <element name="INCLUSIVE_PACKAGES" value="INCLUSIVE_PACKAGES" />
+    <element name="RATE_PACKAGES" value="RATE_PACKAGES" />
+    <element name="ADDITIONAL_PACKAGES" value="ADDITIONAL_PACKAGES" />
+    <element name="RESV_NAME_ID" value="RESV_NAME_ID" />
+    <element name="RESV_TYPE_MODE" value="RESV_TYPE_MODE" />
+    <element name="PAYMENT_METHOD_DESCRIPTION" value="PAYMENT_METHOD_DESCRIPTION" />
+    <element name="BLOCK_CODE" value="BLOCK_CODE" />
+    <element name="DEPOSIT_AMOUNT_PAID" value="DEPOSIT_AMOUNT_PAID" />
+    <element name="DEPOSIT_PAID_DATE" value="DEPOSIT_PAID_DATE" />
+    <element name="FIXED_CHARGE_DESCRIPTION" value="FIXED_CHARGE_DESCRIPTION" />
+    <element name="DEPOSIT_DUE_AMOUNT" value="DEPOSIT_DUE_AMOUNT" />
+    <element name="DEPOSIT_DUE_DATE" value="DEPOSIT_DUE_DATE" />
+    <element name="COUNTRY_DESCRIPTION" value="COUNTRY_DESCRIPTION" />
+    <element name="NATIONALITY_CODE" value="NATIONALITY" />
+    <element name="NATIONALITY_DESCRIPTION" value="NATIONALITY_DESCRIPTION" />
+    <element name="CO_TIME" value="CO_TIME" />
+    <element name="CREDIT_CARD_NUMBER" value="CREDIT_CARD_NUMBER" />
+    <element name="CREDIT_CARD_EXP_DATE" value="CREDIT_CARD_EXP_DATE" />
+    <element name="PRINT_USER" value="PRINT_USER" />
+	<element name="RESERVATION_USER_NAME" value="RESERVATION_USER_NAME" />
+    <element name="MARKET_CODE" value="MARKET_CODE" />
+    <element name="ROOM_CLASS_CODE" value="ROOM_CLASS" />
+    <element name="ROOM_CLASS_DESCRIPTION" value="ROOM_CLASS_DESCRIPTION" />
+    <element name="ARRIVAL_CARRIER_CODE" value="ARRIVAL_CARRIER_CODE" />
+    <element name="DEPARTURE_CARRIER_CODE" value="DEPARTURE_CARRIER_CODE" />
+    <element name="PICKUP_ARRIVAL_DATE_SHORT" value="PICKUP_ARRIVAL_DATE" />
+    <element name="PICKUP_ARRIVAL_TIME" value="PICKUP_ARRIVAL_TIME" />
+    <element name="PICKUP_ARRIVAL_ISO" value="PICKUP_ARRIVAL_ISO" />
+    <element name="DROPOFF_DEPARTURE_DATE_SHORT" value="DROPOFF_DEPARTURE_DATE" />
+    <element name="DROPOFF_DEPARTURE_TIME" value="DROPOFF_DEPARTURE_TIME" />
+    <element name="DROPOFF_DEPARTURE_ISO" value="DROPOFF_DEPARTURE_ISO" />
+    <element name="ARRIVAL_TRANSPORT_CODE" value="ARRIVAL_TRANSPORT_CODE" />
+    <element name="DEPARTURE_TRANSPORT_CODE" value="DEPARTURE_TRANSPORT_CODE" />
+    <element name="MEMBERSHIP_TYPES_RESV" value="MEMBERSHIP_TYPES" />
+    <element name="MEMBERSHIP_NUMBERS_PROFILE" value="MEMBERSHIP_NUMBERS" />
+    <element name="MEMBERSHIP_TYPES_NUMBERS_PROFILE" value="MEMBERSHIPS" />
+    <element name="ARRIVAL_TRANSPORT_REQUIRED" value="ARRIVAL_TRANSPORT_REQUIRED" />
+    <element name="DEPARTURE_TRANSPORT_REQUIRED" value="DEPARTURE_TRANSPORT_REQUIRED" />
+    <element name="ARRIVAL_STATION_CODE" value="ARRIVAL_STATION_CODE" />
+    <element name="DEPARTURE_STATION_CODE" value="DEPARTURE_STATION_CODE" />
+    <element name="NAME_TAX_TYPE_DESCRIPTION" value="NAME_TAX_TYPE_DESCRIPTION" />
+    <element name="TAX_EXEMPT_NO" value="TAX_EXEMPT_NO" />
+    <element name="CRS_ROOM_TYPE_DESCRIPTION" value="CRS_ROOM_TYPE_DESCRIPTION" />
+    <element name="EMAIL_ADDRESS" value="EMAIL_ADDRESS" />
+    <element name="EURO_TOTAL_COST_OF_STAY" value="ALT_TOTAL_COST_OF_STAY" />
+    <element name="EURO_ROOM_REVENUE" value="ALT_ROOM_REVENUE" />
+    <element name="EURO_MULTIPLE_RATE_INFO" value="ALT_MULTIPLE_RATE_INFO" />
+    <element name="EURO_LAST_ROOM_RATE" value="ALT_LAST_ROOM_RATE" />
+    <element name="EURO_ROOM_RATE" value="ALT_ROOM_RATE" />
+    <element name="EURO_CURRENCY_CODE" value="ALT_CURRENCY_CODE" />
+    <element name="EURO_RATE_PACKAGES" value="ALT_RATE_PACKAGES" />
+    <element name="EURO_ADDITIONAL_PACKAGES" value="ALT_ADDITIONAL_PACKAGES" />
+    <element name="EURO_TOTAL_DEPOSIT_PAID" value="ALT_TOTAL_DEPOSIT_PAID" />
+    <element name="EURO_FIXED_CHARGE_FOR_STAY" value="ALT_FIXED_CHARGE_FOR_STAY" />
+    <element name="RESERVATION_CONTACT" value="RESERVATION_CONTACT" />
+    <element name="UDFC01" value="UDFC01" />
+    <element name="UDFC02" value="UDFC02" />
+    <element name="UDFC03" value="UDFC03" />
+    <element name="UDFC04" value="UDFC04" />
+    <element name="UDFC05" value="UDFC05" />
+    <element name="UDFC06" value="UDFC06" />
+    <element name="UDFC07" value="UDFC07" />
+    <element name="UDFC08" value="UDFC08" />
+    <element name="UDFC09" value="UDFC09" />
+    <element name="UDFC10" value="UDFC10" />
+    <element name="UDFC11" value="UDFC11" />
+    <element name="UDFC12" value="UDFC12" />
+    <element name="UDFC13" value="UDFC13" />
+    <element name="UDFC14" value="UDFC14" />
+    <element name="UDFC15" value="UDFC15" />
+    <element name="UDFC16" value="UDFC16" />
+    <element name="UDFC17" value="UDFC17" />
+    <element name="UDFC18" value="UDFC18" />
+    <element name="UDFC19" value="UDFC19" />
+    <element name="UDFC20" value="UDFC20" />
+    <element name="UDFC21" value="UDFC21" />
+    <element name="UDFC22" value="UDFC22" />
+    <element name="UDFC23" value="UDFC23" />
+    <element name="UDFC24" value="UDFC24" />
+    <element name="UDFC25" value="UDFC25" />
+    <element name="UDFC26" value="UDFC26" />
+    <element name="UDFC27" value="UDFC27" />
+    <element name="UDFC28" value="UDFC28" />
+    <element name="UDFC29" value="UDFC29" />
+    <element name="UDFC30" value="UDFC30" />
+    <element name="UDFC31" value="UDFC31" />
+    <element name="UDFC32" value="UDFC32" />
+    <element name="UDFC33" value="UDFC33" />
+    <element name="UDFC34" value="UDFC34" />
+    <element name="UDFC35" value="UDFC35" />
+    <element name="UDFC36" value="UDFC36" />
+    <element name="UDFC37" value="UDFC37" />
+    <element name="UDFC38" value="UDFC38" />
+    <element name="UDFC39" value="UDFC39" />
+    <element name="UDFC40" value="UDFC40" />
+    <element name="UDFN01" value="UDFN01" />
+    <element name="UDFN02" value="UDFN02" />
+    <element name="UDFN03" value="UDFN03" />
+    <element name="UDFN04" value="UDFN04" />
+    <element name="UDFN05" value="UDFN05" />
+    <element name="UDFN06" value="UDFN06" />
+    <element name="UDFN07" value="UDFN07" />
+    <element name="UDFN08" value="UDFN08" />
+    <element name="UDFN09" value="UDFN09" />
+    <element name="UDFN10" value="UDFN10" />
+    <element name="UDFN11" value="UDFN11" />
+    <element name="UDFN12" value="UDFN12" />
+    <element name="UDFN13" value="UDFN13" />
+    <element name="UDFN14" value="UDFN14" />
+    <element name="UDFN15" value="UDFN15" />
+    <element name="UDFN16" value="UDFN16" />
+    <element name="UDFN17" value="UDFN17" />
+    <element name="UDFN18" value="UDFN18" />
+    <element name="UDFN19" value="UDFN19" />
+    <element name="UDFN20" value="UDFN20" />
+    <element name="UDFN21" value="UDFN21" />
+    <element name="UDFN22" value="UDFN22" />
+    <element name="UDFN23" value="UDFN23" />
+    <element name="UDFN24" value="UDFN24" />
+    <element name="UDFN25" value="UDFN25" />
+    <element name="UDFN26" value="UDFN26" />
+    <element name="UDFN27" value="UDFN27" />
+    <element name="UDFN28" value="UDFN28" />
+    <element name="UDFN29" value="UDFN29" />
+    <element name="UDFN30" value="UDFN30" />
+    <element name="UDFN31" value="UDFN31" />
+    <element name="UDFN32" value="UDFN32" />
+    <element name="UDFN33" value="UDFN33" />
+    <element name="UDFN34" value="UDFN34" />
+    <element name="UDFN35" value="UDFN35" />
+    <element name="UDFN36" value="UDFN36" />
+    <element name="UDFN37" value="UDFN37" />
+    <element name="UDFN38" value="UDFN38" />
+    <element name="UDFN39" value="UDFN39" />
+    <element name="UDFN40" value="UDFN40" />
+    <element name="UDFD01" value="UDFD01" />
+    <element name="UDFD02" value="UDFD02" />
+    <element name="UDFD03" value="UDFD03" />
+    <element name="UDFD04" value="UDFD04" />
+    <element name="UDFD05" value="UDFD05" />
+    <element name="UDFD06" value="UDFD06" />
+    <element name="UDFD07" value="UDFD07" />
+    <element name="UDFD08" value="UDFD08" />
+    <element name="UDFD09" value="UDFD09" />
+    <element name="UDFD10" value="UDFD10" />
+    <element name="UDFD11" value="UDFD11" />
+    <element name="UDFD12" value="UDFD12" />
+    <element name="UDFD13" value="UDFD13" />
+    <element name="UDFD14" value="UDFD14" />
+    <element name="UDFD15" value="UDFD15" />
+    <element name="UDFD16" value="UDFD16" />
+    <element name="UDFD17" value="UDFD17" />
+    <element name="UDFD18" value="UDFD18" />
+    <element name="UDFD19" value="UDFD19" />
+    <element name="UDFD20" value="UDFD20" />
+    <element name="UDFD01_ISO" value="UDFD01_ISO" />
+    <element name="UDFD02_ISO" value="UDFD02_ISO" />
+    <element name="UDFD03_ISO" value="UDFD03_ISO" />
+    <element name="UDFD04_ISO" value="UDFD04_ISO" />
+    <element name="UDFD05_ISO" value="UDFD05_ISO" />
+    <element name="UDFD06_ISO" value="UDFD06_ISO" />
+    <element name="UDFD07_ISO" value="UDFD07_ISO" />
+    <element name="UDFD08_ISO" value="UDFD08_ISO" />
+    <element name="UDFD09_ISO" value="UDFD09_ISO" />
+    <element name="UDFD10_ISO" value="UDFD10_ISO" />
+    <element name="UDFD11_ISO" value="UDFD11_ISO" />
+    <element name="UDFD12_ISO" value="UDFD12_ISO" />
+    <element name="UDFD13_ISO" value="UDFD13_ISO" />
+    <element name="UDFD14_ISO" value="UDFD14_ISO" />
+    <element name="UDFD15_ISO" value="UDFD15_ISO" />
+    <element name="UDFD16_ISO" value="UDFD16_ISO" />
+    <element name="UDFD17_ISO" value="UDFD17_ISO" />
+    <element name="UDFD18_ISO" value="UDFD18_ISO" />
+    <element name="UDFD19_ISO" value="UDFD19_ISO" />
+    <element name="UDFD20_ISO" value="UDFD20_ISO" />
+    <element name="PROFILE_UDFC01" value="NAME_UDFC01" />
+    <element name="PROFILE_UDFC02" value="NAME_UDFC02" />
+    <element name="PROFILE_UDFC03" value="NAME_UDFC03" />
+    <element name="PROFILE_UDFC04" value="NAME_UDFC04" />
+    <element name="PROFILE_UDFC05" value="NAME_UDFC05" />
+    <element name="PROFILE_UDFC06" value="NAME_UDFC06" />
+    <element name="PROFILE_UDFC07" value="NAME_UDFC07" />
+    <element name="PROFILE_UDFC08" value="NAME_UDFC08" />
+    <element name="PROFILE_UDFC09" value="NAME_UDFC09" />
+    <element name="PROFILE_UDFC10" value="NAME_UDFC10" />
+    <element name="PROFILE_UDFC11" value="NAME_UDFC11" />
+    <element name="PROFILE_UDFC12" value="NAME_UDFC12" />
+    <element name="PROFILE_UDFC13" value="NAME_UDFC13" />
+    <element name="PROFILE_UDFC14" value="NAME_UDFC14" />
+    <element name="PROFILE_UDFC15" value="NAME_UDFC15" />
+    <element name="PROFILE_UDFC16" value="NAME_UDFC16" />
+    <element name="PROFILE_UDFC17" value="NAME_UDFC17" />
+    <element name="PROFILE_UDFC18" value="NAME_UDFC18" />
+    <element name="PROFILE_UDFC19" value="NAME_UDFC19" />
+    <element name="PROFILE_UDFC20" value="NAME_UDFC20" />
+    <element name="PROFILE_UDFC21" value="NAME_UDFC21" />
+    <element name="PROFILE_UDFC22" value="NAME_UDFC22" />
+    <element name="PROFILE_UDFC23" value="NAME_UDFC23" />
+    <element name="PROFILE_UDFC24" value="NAME_UDFC24" />
+    <element name="PROFILE_UDFC25" value="NAME_UDFC25" />
+    <element name="PROFILE_UDFC26" value="NAME_UDFC26" />
+    <element name="PROFILE_UDFC27" value="NAME_UDFC27" />
+    <element name="PROFILE_UDFC28" value="NAME_UDFC28" />
+    <element name="PROFILE_UDFC29" value="NAME_UDFC29" />
+    <element name="PROFILE_UDFC30" value="NAME_UDFC30" />
+    <element name="PROFILE_UDFC31" value="NAME_UDFC31" />
+    <element name="PROFILE_UDFC32" value="NAME_UDFC32" />
+    <element name="PROFILE_UDFC33" value="NAME_UDFC33" />
+    <element name="PROFILE_UDFC34" value="NAME_UDFC34" />
+    <element name="PROFILE_UDFC35" value="NAME_UDFC35" />
+    <element name="PROFILE_UDFC36" value="NAME_UDFC36" />
+    <element name="PROFILE_UDFC37" value="NAME_UDFC37" />
+    <element name="PROFILE_UDFC38" value="NAME_UDFC38" />
+    <element name="PROFILE_UDFC39" value="NAME_UDFC39" />
+    <element name="PROFILE_UDFC40" value="NAME_UDFC40" />
+    <element name="PROFILE_UDFN01" value="NAME_UDFN01" />
+    <element name="PROFILE_UDFN02" value="NAME_UDFN02" />
+    <element name="PROFILE_UDFN03" value="NAME_UDFN03" />
+    <element name="PROFILE_UDFN04" value="NAME_UDFN04" />
+    <element name="PROFILE_UDFN05" value="NAME_UDFN05" />
+    <element name="PROFILE_UDFN06" value="NAME_UDFN06" />
+    <element name="PROFILE_UDFN07" value="NAME_UDFN07" />
+    <element name="PROFILE_UDFN08" value="NAME_UDFN08" />
+    <element name="PROFILE_UDFN09" value="NAME_UDFN09" />
+    <element name="PROFILE_UDFN10" value="NAME_UDFN10" />
+    <element name="PROFILE_UDFN11" value="NAME_UDFN11" />
+    <element name="PROFILE_UDFN12" value="NAME_UDFN12" />
+    <element name="PROFILE_UDFN13" value="NAME_UDFN13" />
+    <element name="PROFILE_UDFN14" value="NAME_UDFN14" />
+    <element name="PROFILE_UDFN15" value="NAME_UDFN15" />
+    <element name="PROFILE_UDFN16" value="NAME_UDFN16" />
+    <element name="PROFILE_UDFN17" value="NAME_UDFN17" />
+    <element name="PROFILE_UDFN18" value="NAME_UDFN18" />
+    <element name="PROFILE_UDFN19" value="NAME_UDFN19" />
+    <element name="PROFILE_UDFN20" value="NAME_UDFN20" />
+    <element name="PROFILE_UDFN21" value="NAME_UDFN21" />
+    <element name="PROFILE_UDFN22" value="NAME_UDFN22" />
+    <element name="PROFILE_UDFN23" value="NAME_UDFN23" />
+    <element name="PROFILE_UDFN24" value="NAME_UDFN24" />
+    <element name="PROFILE_UDFN25" value="NAME_UDFN25" />
+    <element name="PROFILE_UDFN26" value="NAME_UDFN26" />
+    <element name="PROFILE_UDFN27" value="NAME_UDFN27" />
+    <element name="PROFILE_UDFN28" value="NAME_UDFN28" />
+    <element name="PROFILE_UDFN29" value="NAME_UDFN29" />
+    <element name="PROFILE_UDFN30" value="NAME_UDFN30" />
+    <element name="PROFILE_UDFN31" value="NAME_UDFN31" />
+    <element name="PROFILE_UDFN32" value="NAME_UDFN32" />
+    <element name="PROFILE_UDFN33" value="NAME_UDFN33" />
+    <element name="PROFILE_UDFN34" value="NAME_UDFN34" />
+    <element name="PROFILE_UDFN35" value="NAME_UDFN35" />
+    <element name="PROFILE_UDFN36" value="NAME_UDFN36" />
+    <element name="PROFILE_UDFN37" value="NAME_UDFN37" />
+    <element name="PROFILE_UDFN38" value="NAME_UDFN38" />
+    <element name="PROFILE_UDFN39" value="NAME_UDFN39" />
+    <element name="PROFILE_UDFN40" value="NAME_UDFN40" />
+    <element name="PROFILE_UDFD01" value="NAME_UDFD01" />
+    <element name="PROFILE_UDFD02" value="NAME_UDFD02" />
+    <element name="PROFILE_UDFD03" value="NAME_UDFD03" />
+    <element name="PROFILE_UDFD04" value="NAME_UDFD04" />
+    <element name="PROFILE_UDFD05" value="NAME_UDFD05" />
+    <element name="PROFILE_UDFD06" value="NAME_UDFD06" />
+    <element name="PROFILE_UDFD07" value="NAME_UDFD07" />
+    <element name="PROFILE_UDFD08" value="NAME_UDFD08" />
+    <element name="PROFILE_UDFD09" value="NAME_UDFD09" />
+    <element name="PROFILE_UDFD10" value="NAME_UDFD10" />
+    <element name="PROFILE_UDFD11" value="NAME_UDFD11" />
+    <element name="PROFILE_UDFD12" value="NAME_UDFD12" />
+    <element name="PROFILE_UDFD13" value="NAME_UDFD13" />
+    <element name="PROFILE_UDFD14" value="NAME_UDFD14" />
+    <element name="PROFILE_UDFD15" value="NAME_UDFD15" />
+    <element name="PROFILE_UDFD16" value="NAME_UDFD16" />
+    <element name="PROFILE_UDFD17" value="NAME_UDFD17" />
+    <element name="PROFILE_UDFD18" value="NAME_UDFD18" />
+    <element name="PROFILE_UDFD19" value="NAME_UDFD19" />
+    <element name="PROFILE_UDFD20" value="NAME_UDFD20" />
+    <element name="PROFILE_UDFD01_ISO" value="NAME_UDFD01_ISO" />
+    <element name="PROFILE_UDFD02_ISO" value="NAME_UDFD02_ISO" />
+    <element name="PROFILE_UDFD03_ISO" value="NAME_UDFD03_ISO" />
+    <element name="PROFILE_UDFD04_ISO" value="NAME_UDFD04_ISO" />
+    <element name="PROFILE_UDFD05_ISO" value="NAME_UDFD05_ISO" />
+    <element name="PROFILE_UDFD06_ISO" value="NAME_UDFD06_ISO" />
+    <element name="PROFILE_UDFD07_ISO" value="NAME_UDFD07_ISO" />
+    <element name="PROFILE_UDFD08_ISO" value="NAME_UDFD08_ISO" />
+    <element name="PROFILE_UDFD09_ISO" value="NAME_UDFD09_ISO" />
+    <element name="PROFILE_UDFD10_ISO" value="NAME_UDFD10_ISO" />
+    <element name="PROFILE_UDFD11_ISO" value="NAME_UDFD11_ISO" />
+    <element name="PROFILE_UDFD12_ISO" value="NAME_UDFD12_ISO" />
+    <element name="PROFILE_UDFD13_ISO" value="NAME_UDFD13_ISO" />
+    <element name="PROFILE_UDFD14_ISO" value="NAME_UDFD14_ISO" />
+    <element name="PROFILE_UDFD15_ISO" value="NAME_UDFD15_ISO" />
+    <element name="PROFILE_UDFD16_ISO" value="NAME_UDFD16_ISO" />
+    <element name="PROFILE_UDFD17_ISO" value="NAME_UDFD17_ISO" />
+    <element name="PROFILE_UDFD18_ISO" value="NAME_UDFD18_ISO" />
+    <element name="PROFILE_UDFD19_ISO" value="NAME_UDFD19_ISO" />
+    <element name="PROFILE_UDFD20_ISO" value="NAME_UDFD20_ISO" />
+    <element name="TAX1_NO" value="TAX1_NO" />
+    <element name="TAX1_NO_TRAVEL_AGENT" value="TAX1_NO_TRAVEL_AGENT" />
+	<element name="TAX1_NO_SOURCE" value="TAX1_NO_SOURCE" />
+    <element name="TAX1_NO_COMPANY" value="TAX1_NO_COMPANY" />				
+    <element name="SHARE_BIRTH_DATE" value="MUL_BIRTH_DATE" />
+    <element name="SHARE_BIRTH_PLACE" value="MUL_BIRTH_PLACE" />
+    <element name="REGISTRATION_CARD_NO" value="REGISTRATION_CARD_NO" />
+    <element name="GENDER" value="GENDER" />
+    <element name="BIRTH_PLACE" value="BIRTH_PLACE" />
+    <element name="DATE_OF_BIRTH" value="BIRTH_DATE" />
+    <element name="DATE_OF_BIRTH_ISO" value="BIRTH_DATE_ISO" />
+    <element name="BIRTH_COUNTRY_CODE" value="BIRTH_COUNTRY" />
+    <element name="ID_DATE" value="ID_DATE" />
+    <element name="ID_DATE_ISO" value="ID_DATE_ISO" />
+	<element name="ID_EXPIRATION_DATE" value="ID_EXPIRATION_DATE" />
+    <element name="ID_EXPIRATION_DATE_ISO" value="ID_EXPIRATION_DATE_ISO" />
+    <element name="ID_PLACE" value="ID_PLACE" />
+    <element name="ID_NUMBER" value="ID_NUMBER" />
+    <element name="ID_TYPE" value="ID_TYPE" />
+    <element name="PROFESSION" value="PROFESSION" />
+    <element name="PROPERTY_EMAIL" value="PROPERTY_EMAIL" />
+    <element name="XLAST_NAME" value="XLAST_NAME" />
+    <element name="XFIRST_NAME" value="XFIRST_NAME" />
+    <element name="XTITLE" value="XTITLE" />
+    <element name="XSALUTATION" value="XSALUTATION" />
+    <element name="XCOMPANY_NAME" value="XCOMPANY_NAME" />
+    <element name="XTRAVEL_AGENT_NAME" value="XTRAVEL_AGENT_NAME" />
+    <element name="XGROUP_NAME" value="XGROUP_NAME" />
+    <element name="XSOURCE_NAME" value="XSOURCE_NAME" />
+    <element name="XRESERVATION_CONTACT" value="XRESERVATION_CONTACT" />
+    <element name="XBILLING_CONTACT" value="XBILLING_CONTACT" />
+    <element name="PRINT_RATE_YN" value="PRINT_RATE_YN" />
+    <element name="CANCEL_DATE" value="CANCEL_DATE" />
+    <element name="CANCEL_AMOUNT" value="CANCEL_AMOUNT" />
+    <element name="CANCEL_TIME" value="CANCEL_TIME" />
+    <element name="CANCEL_DATE_ISO" value="CANCEL_DATE_ISO" />
+    <element name="CALLER_NAME" value="CALLER_NAME" />
+    <element name="CALLER_PHONE" value="CALLER_PHONE" />
+    <element name="CALL_BEGIN_DATE" value="CALL_BEGIN_DATE" />
+    <element name="CALL_BEGIN_DATE_ISO" value="CALL_BEGIN_DATE_ISO" />
+    <element name="CALL_END_DATE" value="CALL_END_DATE" />
+    <element name="CALL_END_DATE_ISO" value="CALL_END_DATE_ISO" />
+    <element name="ID_COUNTRY" value="ID_COUNTRY" />
+    <element name="ADDRESSEE_STATE_DESCRIPTION" value="ADDRESSEE_STATE_DESCRIPTION" />
+    <element name="CALLER_FAX" value="CALLER_FAX" />
+    <element name="CALLER_EMAIL" value="CALLER_EMAIL" />
+    <element name="CHILDREN1" value="CHILDREN1" />
+    <element name="CHILDREN2" value="CHILDREN2" />
+    <element name="CHILDREN3" value="CHILDREN3" />
+    <element name="SHARERS_ARRIVAL" value="SHARERS_ARRIVAL" />
+    <element name="SHARERS_DEPARTURE" value="SHARERS_DEPARTURE" />
+    <element name="SHARERS_SHARE_AMT" value="SHARERS_SHARE_AMT" />
+    <element name="SHARERS_FULL_NAME" value="SHARERS_FULL_NAME" />
+    <element name="SHARERS_FULL_NAME2" value="SHARERS_FULL_NAME2" />
+    <element name="SHARE_ADULTS" value="SHARE_ADULTS" />
+    <element name="SHARE_CHILDREN" value="SHARE_CHILDREN" />
+    <element name="SHARERS_XFULL_NAME" value="SHARERS_XFULL_NAME" />
+    <element name="DEPARTURE_DATE_LONG" value="DEPARTURE_DATE_LONG_FORMAT" />
+    <element name="ARRIVAL_DATE_LONG" value="ARRIVAL_DATE_LONG_FORMAT" />
+    <element name="CC_CURRENCY_CODE" value="CC_CURRENCY_CODE" />
+    <element name="CC_EXCHANGE_RATE" value="CC_EXCHANGE_RATE" />
+    <element name="ACTIVITY_YN" value="ACTIVITY_YN" />
+    <element name="ADDRESSEE_ADDRESS3" value="ADDRESSEE_ADDRESS3" />
+    <element name="ADDRESSEE_ADDRESS4" value="ADDRESSEE_ADDRESS4" />
+    <element name="ADDRESS3" value="ADDRESS3" />
+    <element name="ADDRESS4" value="ADDRESS4" />
+    <element name="ADDRESSEE_CITY_EXT" value="ADDRESSEE_CITY_EXT" />
+    <element name="CITY_EXT" value="CITY_EXT" />
+    <element name="CANCELLATION_NO" value="CANCELLATION_NO" />
+    <element name="MEMBERSHIP_DESCRIPTIONS" value="MEMBERSHIP_DESCRIPTIONS" />
+    <element name="TA_RECORD_LOCATOR" value="TA_RECORD_LOCATOR" />
+    <element name="GRAND_TOTAL" value="GRAND_TOTAL" />
+    <element name="FIXED_CHARGE_DETAILED_DESCRIPTION" value="FIXED_CHG_DET_DESCRIPTION" />
+    <element name="FIXED_CHARGE_DETAILED_QUANTITY" value="FIXED_CHG_DET_QUANTITY" />
+    <element name="FIXED_CHARGE_DETAILED_AMOUNT" value="FIXED_CHG_DET_AMOUNT" />
+    <element name="FIXED_CHARGE_DETAILED_TOTAL" value="FIXED_CHG_DET_TOTAL" />
+    <element name="MULTIPLE_RATE_INFO1" value="MULTIPLE_RATE_INFO1" />
+    <element name="MULTIPLE_RATE_INFO2" value="MULTIPLE_RATE_INFO2" />
+    <element name="MULTIPLE_RATE_INFO3" value="MULTIPLE_RATE_INFO3" />
+    <element name="MULTIPLE_RATE_INFO4" value="MULTIPLE_RATE_INFO4" />
+    <element name="MULTIPLE_RATE_INFO5" value="MULTIPLE_RATE_INFO5" />
+    <element name="MULTIPLE_RATE_INFO6" value="MULTIPLE_RATE_INFO6" />
+    <element name="MULTIPLE_RATE_INFO7" value="MULTIPLE_RATE_INFO7" />
+    <element name="MULTIPLE_RATE_INFO8" value="MULTIPLE_RATE_INFO8" />
+    <element name="PACKAGE_GROUPS" value="PACKAGE_GROUPS" />
+    <element name="BARCODE" value="BARCODE" />
+    <element name="ROOM_TYPE_DESCRIPTION_LONG" value="ROOM_TYPE_DESCRIPTION_LONG" />
+    <element name="ARRIVAL_DAY_OF_WEEK" value="ARRIVAL_DAY_OF_WEEK" />
+    <element name="DEPARTURE_DAY_OF_WEEK" value="DEPARTURE_DAY_OF_WEEK" />
+    <element name="RATE_CODE_INFO_SHORT" value="RATE_CODE_INFO_SHORT" />
+    <element name="RATE_CODE_INFO_LONG" value="RATE_CODE_INFO_LONG" />
+    <element name="CUSTOM_REFERENCE" value="CUSTOM_REFERENCE" />
+    <element name="ROOM_FEATURE_CODES" value="ROOM_FEATURE_CODES" />
+    <element name="ROOM_FEATURE_DESCRIPTIONS" value="ROOM_FEATURE_DESCRIPTIONS" />
+    <element name="RESV_PREFERENCE_CODES" value="RESV_PREFERENCE_CODES" />
+    <element name="RESV_PREFERENCE_DESCRIPTIONS" value="RESV_PREFERENCE_DESCRIPTIONS" />
+    <element name="RTC_ROOM_TYPE" value="RTC_ROOM_TYPE" />
+    <element name="RTC_ROOM_TYPE_DESCRIPTION" value="RTC_ROOM_TYPE_DESCRIPTION" />
+    <element name="RTC_ROOM_TYPE_DESCRIPTION_LONG" value="RTC_ROOM_TYPE_DESCRIPTION_LONG" />
+    <element name="RESV_MEMBERSHIP_TYPES" value="RESV_MEMBERSHIP_TYPES" />
+    <element name="RESV_MEMBERSHIP_NUMBERS" value="RESV_MEMBERSHIP_NUMBERS" />
+    <element name="RESV_MEMBERSHIP_DESCRIPTIONS" value="RESV_MEMBERSHIP_DESCRIPTIONS" />
+    <element name="RESV_MEMBERSHIPS" value="RESV_MEMBERSHIPS" />
+    <element name="RESV_MEMBERSHIP_LEVEL" value="RESV_MEMBERSHIP_LEVEL" />
+    <element name="ASB_CYCLE" value="ASB_CYCLE" />
+    <element name="ASB_CYCLE_RATE" value="ASB_CYCLE_RATE" />
+    <element name="ASB_PARTIAL_CYCLE_RATE" value="ASB_PARTIAL_CYCLE_RATE" />
+    <element name="PROFILE_FLOOR_CODES" value="PROFILE_FLOOR_CODES" />
+    <element name="PROFILE_FLOOR_DESCRIPTION" value="PROFILE_FLOOR_DESC" />
+    <element name="PROFILE_SMOKING_CODES" value="PROFILE_SMOKING_CODES" />
+    <element name="PROFILE_SMOKING_DESCRIPTION" value="PROFILE_SMOKING_DESC" />
+    <element name="PROFILE_SPECIALS_CODES" value="PROFILE_SPECIAL_CODES" />
+    <element name="PROFILE_SPECIALS_DESCRIPTION" value="PROFILE_SPECIAL_DESC" />
+    <element name="PROFILE_OTHER_PREFERENCE_CODES" value="PROFILE_OTHER_PREFERENCE_CODES" />
+    <element name="PROFILE_OTHER_PREFERENCE_DESCRIPTION" value="PROFILE_OTHER_PREFERENCE_DESC" />
+    <element name="ASB_TOTAL_LEASE" value="ASB_TOTAL_LEASE" />
+    <element name="DAILY_RATE_INFO" value="DAILY_RATE_INFO" />
+    <element name="EURO_DAILY_RATE_INFO" value="ALT_DAILY_RATE_INFO" />
+    <element name="TOTAL_TAX" value="TOTAL_TAX" />
+    <element name="ALT_TOTAL_TAX" value="ALT_TOTAL_TAX" />
+    <element name="SHARE_AMOUNT" value="SHARE_AMOUNT" />
+    <element name="ALT_SHARE_AMOUNT" value="ALT_SHARE_AMOUNT" />
+    <element name="MEMBERSHIP_FOLIO_MESSAGE" value="MEMBERSHIP_FOLIO_MESSAGE" />
+	<element name="ADDL_ADDRESSEE_NAME_ID" value="ADDL_ADDRESSEE_NAME_ID" />
+    <element name="ADDL_ADDRESSEE_NAME" value="ADDL_ADDRESSEE_NAME" />
+    <element name="ADDL_ADDRESSEE_FULL_ADDRESS" value="ADDL_ADDRESSEE_FULL_ADDRESS" />
+    <element name="ADDL_ADDRESSEE_ADDRESS1" value="ADDL_ADDRESSEE_ADDRESS1" />
+    <element name="ADDL_ADDRESSEE_ADDRESS2" value="ADDL_ADDRESSEE_ADDRESS2" />
+    <element name="ADDL_ADDRESSEE_CITY" value="ADDL_ADDRESSEE_CITY" />
+    <element name="ADDL_ADDRESSEE_STATE" value="ADDL_ADDRESSEE_STATE" />
+    <element name="ADDL_ADDRESSEE_COUNTRY" value="ADDL_ADDRESSEE_COUNTRY" />
+    <element name="ADDL_ADDRESSEE_COUNTRY_DESC" value="ADDL_ADDRESSEE_COUNTRY_DESC" />
+    <element name="ADDL_ADDRESSEE_STATE_DESC" value="ADDL_ADDRESSEE_STATE_DESC" />
+    <element name="ADDL_ADDRESSEE_ZIP_CODE" value="ADDL_ADDRESSEE_ZIP_CODE" />
+    <element name="CANCELLATION_DATE" value="CANCELLATION_DATE" />
+    <element name="CANCELLATION_DATE_ISO" value="CANCELLATION_DATE_ISO" />
+    <element name="CANCELLATION_REASON_CODE" value="CANCELLATION_REASON_CODE" />
+    <element name="CANCELLATION_REASON_DESC" value="CANCELLATION_REASON_DESC" />
+    <element name="AWRD_REDEEM_UPGRD_POINTS" value="AWRD_REDEEM_UPGRD_POINTS" />
+    <element name="IS_UPSOLD_YN" value="IS_UPSOLD_YN" />
+    <element name="UPSOLD_BY_USER_ID" value="UPSOLD_BY_USER_ID" />
+    <element name="UPSELL_RULE_ID" value="UPSELL_RULE_ID" />
+    <element name="UPSELL_RULE_CODE" value="UPSELL_RULE_CODE" />
+    <element name="ORG_ROOM_CATEGORY" value="ORG_ROOM_CATEGORY" />
+    <element name="ORG_ROOM_CATEGORY_LABEL" value="ORG_ROOM_CATEGORY_LABEL" />
+    <element name="ORG_STAY_COST" value="ORG_STAY_COST" />
+    <element name="FIRST_NIGHT_UPSELL" value="FIRST_NIGHT_UPSELL" />
+    <element name="TOTAL_UPSELL_CHARGE" value="TOTAL_UPSELL_CHARGE" />
+    <element name="TOTAL_STAY_COST_AFTER_UPSELL" value="TOTAL_STAY_COST_AFTER_UPSELL" />
+    <element name="RESORT_CHECK_IN_TIME" value="RESORT_CHECK_IN_TIME" />
+    <element name="RESORT_CHECK_IN_TIME_ISO" value="RESORT_CHECK_IN_TIME_ISO" />
+    <element name="RESORT_CHECK_OUT_TIME" value="RESORT_CHECK_OUT_TIME" />
+    <element name="RESORT_CHECK_OUT_TIME_ISO" value="RESORT_CHECK_OUT_TIME_ISO" />
+    <element name="OPERA_ECERTIFICATE" value="OPERA_ECERTIFICATE" />
+    <element name="PROMOTION_COUPONS" value="PROMOTION_COUPONS" />
+    <element name="LOYALTY_MEM_NO" value="LOYALTY_MEM_NO" />
+    <element name="LOYALTY_MEM_LEVEL_CODE" value="LOYALTY_MEM_LEVEL_CODE" />
+    <element name="LOYALTY_MEM_LEVEL_DESC" value="LOYALTY_MEM_LEVEL_DESC" />
+    <element name="LOYALTY_MEM_BALANCE" value="LOYALTY_MEM_BALANCE" />
+    <element name="LOYALTY_NIGHTS_TO_RENEW" value="LOYALTY_NIGHTS_TO_RENEW" />
+    <element name="LOYALTY_NIGHTS_NEXT_LEVEL" value="LOYALTY_NIGHTS_NEXT_LEVEL" />    
+	<element name="MULTIPLE_RATE_INFO" value="MULTIPLE_RATE_INFO" />
+	<element name="GUARANTEE_STATUS" value="GUARANTEE_STATUS" />
+	<element name="CF_ROOMTYPE_DESC" value="CF_ROOMTYPE_DESC" />
+	<element name="ORS_RESORT" value="ORS_RESORT" />
+	
+    <group name="G_ACTIVITIES" source="Q2">
+      <element name="RESV_NAME_ID" value="ACT_RESV_NAME_ID" />
+      <element name="ACTIVITY_DATE" value="ACTIVITY_DATE" />
+      <element name="ACTIVITY_DATE_ISO" value="ACTIVITY_DATE_ISO" />
+      <element name="ACTIVITY_TYPE" value="ACTIVITY_TYPE" />
+      <element name="ACTIVITY_LOCATION_CODE" value="ACTIVITY_LOCATION_CODE" />
+      <element name="ACTIVITY_LOCATION_DESCRIPTION" value="ACTIVITY_LOCATION_DESC" />
+      <element name="ACTIVITY_STATUS_DESCRIPTION" value="ACTIVITY_STATUS_DESC" />
+      <element name="ACTIVITY_DESCRIPTION" value="ACTIVITY_DESC" />
+      <element name="ACTIVITY_PAX" value="ACTIVITY_PAX" />
+      <element name="ACTIVITY_START_TIME" value="ACTIVITY_START_TIME" />
+      <element name="ACTIVITY_DURATION" value="ACTIVITY_DURATION" />
+      <element name="ACTIVITY_END_TIME" value="ACTIVITY_END_TIME" />
+      <element name="ACTIVITY_STATUS_CODE" value="ACTIVITY_STATUS_CODE" />
+      <element name="ACTIVITY_NOTES" value="ACTIVITY_NOTES" />
+      <element name="ACTIVITY_GUEST_TYPE" value="ACTIVITY_GUEST_TYPE" />
+      <element name="ACTIVITY_AMOUNT" value="ACTIVITY_AMOUNT" />
+      <element name="ACTIVITY_DEPOSIT_AMOUNT" value="ACTIVITY_DEPOSIT_AMOUNT" />
+      <element name="ACTIVITY_GUESTNAME" value="ACTIVITY_GUESTNAME" />
+    </group>
+    <group name="G_INVENTORY_ITEMS" source="Q3">
+      <element name="RESV_NAME_ID" value="ITEM_RESV_NAME_ID" />
+      <element name="ITEM_QUANTITY" value="ITEM_QUANTITY" />
+      <element name="ITEM_BEGIN_DATE" value="ITEM_BEGIN_DATE" />
+      <element name="ITEM_BEGIN_DATE_ISO" value="ITEM_BEGIN_DATE_ISO" />
+      <element name="ITEM_END_DATE" value="ITEM_END_DATE" />
+      <element name="ITEM_END_DATE_ISO" value="ITEM_END_DATE_ISO" />
+      <element name="ITEM_NAME" value="ITEM_NAME" />
+      <element name="ITEM_DESCRIPTION" value="ITEM_DESCRIPTION" />
+      <element name="ITEM_CODE" value="ITEM_CODE" />
+    </group>
+    <group name="G_UPSELL_OFFERS" source="Q4">
+      <element name="RESV_NAME_ID" value="IN_CONF_RESV_NAME_ID" />
+      <element name="UPSELL_OFFER_ID" value="UPSELL_OFFER_ID" />
+      <element name="TO_RATE_CODE" value="TO_RATE_CODE" />
+      <element name="FROM_ROOM_CATEGORY" value="FROM_ROOM_CATEGORY" />
+      <element name="TO_ROOM_CATEGORY" value="TO_ROOM_CATEGORY" />
+      <element name="TO_ROOM_CATEGORY_LABEL" value="TO_ROOM_CATEGORY_LABEL" />
+      <element name="FROM_ROOM_CLASS" value="FROM_ROOM_CLASS" />
+      <element name="TO_ROOM_CLASS" value="TO_ROOM_CLASS" />
+      <element name="FIRST_NIGHT_RATE_AMT" value="FIRST_NIGHT_RATE_AMT" />
+      <element name="TOTAL_STAY_AMT" value="TOTAL_STAY_AMT" />
+      <element name="FIRST_NIGHT_UPSELL" value="FIRST_NIGHT_UPSELL" />
+      <element name="TOT_UPSELL_MONEY_AMT" value="TOT_UPSELL_MONEY_AMT" />
+      <element name="TOTAL_RANKING_VALUE" value="TOTAL_RANKING_VALUE" />
+      <element name="RATE_SOURCE_TYPE" value="RATE_SOURCE_TYPE" />
+      <element name="RATE_SOURCE" value="RATE_SOURCE" />
+      <element name="MEMBERSHIP_TYPE" value="MEMBERSHIP_TYPE" />
+      <element name="MEMBERSHIP_LEVEL" value="MEMBERSHIP_LEVEL" />
+      <element name="CHANNEL" value="CHANNEL" />
+      <element name="GUARANTEE_TYPE" value="GUARANTEE_TYPE" />
+      <element name="MARKET_CODE" value="MARKET_CODE" />
+      <element name="UPSELL_RULE_ID" value="UPSELL_RULE_ID" />
+      <element name="UPSELL_CODE" value="UPSELL_CODE" />
+      <element name="RESORT" value="IN_CONF_RESORT" />
+      <element name="FIRST_NIGHT_UPSELL_CHARGE" value="FIRST_NIGHT_UPSELL_CHARGE" />
+      <element name="TOTAL_UPSELL_CHARGE" value="TOTAL_UPSELL_CHARGE" />
+      <element name="ROOM_CATEGORY_DESCRIPTION" value="ROOM_CATEGORY_DESCRIPTION" />
+      <element name="ROOM_FEATURES" value="ROOM_FEATURES" />
+      <element name="FIRST_NIGHT_AMT_FMT" value="V_FIRST_NIGHT_AMT_FMT" />
+      <element name="TOTAL_STAY_AMT_FMT" value="V_TOTAL_STAY_AMT_FMT" />
+      <element name="FIRST_NGT_UPSELL_FMT" value="V_FIRST_NGT_UPSELL_FMT" />
+      <element name="TOT_UPSELL_MONEY_FMT" value="V_TOT_UPSELL_MONEY_FMT" />
+      <element name="FIRST_NIGHT_CHRG_FMT" value="V_FIRST_NIGHT_CHRG_FMT" />
+      <element name="TOT_UPSELL_CHRG_FMT" value="V_TOT_UPSELL_CHRG_FMT" />
+      <element name="CURRENCY_CODE" value="CURRENCY_CODE" />
+      <element name="ROOM_CATEGORY_DESCRIPTION_LONG" value="ROOM_CATEGORY_DESCRIPTION_LONG" />
+    </group>
+  </group>
+
+  <group name="PARAMETERS" source="Q_PARAMETERS">
+    <element name="PARAM_NAME" value="PARAM_NAME" />
+    <element name="PARAM_VALUE" value="PARAM_VALUE" />
+  </group>
+
+  <group name="G_LINKED_RESERVATIONS" source="Q_LINKED_RESERVATIONS">
+   <element name="RESORT" value="RESORT" />
+    <element name="TITLE" value="TITLE" />
+    <element name="GUEST_NAME" value="GUEST_NAME" />
+    <element name="ROOM_CATEGORY" value="ROOM_CATEGORY" />
+    <element name="CONFIRMATION_NO" value="CONFIRMATION_NO" />
+    <element name="NIGHTLY_RATE" value="NIGHTLY_RATE" />
+    <element name="ADULTS" value="ADULTS" />
+    <element name="CHILDREN" value="CHILDREN" />
+    <element name="ARRIVAL" value="ARRIVAL" />
+    <element name="ARRIVAL_DATE_ISO" value="ARRIVAL_DATE_ISO" />
+    <element name="DEPARTURE" value="DEPARTURE" />
+    <element name="DEPARTURE_DATE_ISO" value="DEPARTURE_DATE_ISO" />
+	  <element name="INCLUSIVE_PACKAGES" value="INCLUSIVE_PACKAGES" />
+    <element name="LINK_TYPE" value="LINK_TYPE" />
+    <element name="RESV_STATUS" value="RESV_STATUS" />
+  </group>
+  
+  <group name="G_DEPOSIT_RULE" source="Q_DEPOSIT_RULE">
+    <element name="RESV_DEPOSIT_SCHEDULE_ID" value="RESV_DEPOSIT_SCHEDULE_ID" />
+	<element name="DEPOSIT_RULE_CODE" value="DEPOSIT_RULE_CODE" />
+    <element name="DEPOSIT_RULE_DESC" value="DEPOSIT_RULE_DESC" />
+  </group>
+  
+  <group name="G_CANCEL_RULE" source="Q_CANCEL_RULE">
+    <element name="RESV_CANCEL_POLICY_ID" value="RESV_CANCEL_POLICY_ID" />
+	<element name="CANCEL_RULE_CODE" value="CANCEL_RULE_CODE" />
+    <element name="CANCEL_RULE_DESC" value="CANCEL_RULE_DESC" />
+  </group>
+
+
+  <group name="G_PRIVACY_OPTIONS" source="Q_PRIVACY_OPTIONS">
+    <element name="M_LST" value="M_LST" />
+    <element name="MR_YN" value="MR_YN" />
+    <element name="TP_YN" value="TP_YN" />
+    <element name="AM_YN" value="AM_YN" />
+    <element name="E_YN" value="E_YN" />
+    <element name="P_YN" value="P_YN" />
+    <element name="SMS_YN" value="SMS_YN" />
+    <element name="GP_YN" value="GP_YN" />
+    <element name="DM_LST" value="DM_LST" />
+    <element name="DMR_YN" value="DMR_YN" />
+    <element name="DTP_YN" value="DTP_YN" />
+    <element name="DAM_YN" value="DAM_YN" />
+	<element name="DE_YN" value="DE_YN" />
+    <element name="DP_YN" value="DP_YN" />
+    <element name="DSMS_YN" value="DSMS_YN" />
+    <element name="DGP_YN" value="DGP_YN" />
+	<element name="EMAIL" value="EMAIL" />
+  </group>  
+  </dataStructure>
+
+
+  <dataTrigger name="afterReportTrigger" source="confirmation_odt.afterReport" />
+
+
+</dataTemplate>
